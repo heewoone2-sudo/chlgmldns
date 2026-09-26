@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   allLectures, 
   fullQuizBank,
@@ -20,114 +20,261 @@ import {
   Copy, 
   Check, 
   ChevronRight, 
-  GraduationCap, 
   Flame, 
   Shuffle, 
   Lightbulb, 
   Printer,
   Heart,
-  Pencil
+  Pencil,
+  AlertCircle
 } from 'lucide-react';
+
+// In-memory fallback in case localStorage is blocked by sandboxed iframe
+const memoryStore: Record<string, string> = {};
+
+function safeStorageGet(key: string): string | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(key);
+    }
+  } catch {
+    // blocked by sandbox / third-party storage restrictions
+  }
+  return memoryStore[key] ?? null;
+}
+
+function safeStorageSet(key: string, value: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, value);
+      return;
+    }
+  } catch {
+    // blocked by sandbox
+  }
+  memoryStore[key] = value;
+}
+
+function getInitialCompletedLectures(): number[] {
+  try {
+    const saved = safeStorageGet('ppakong_completed');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(item => typeof item === 'number');
+      }
+    }
+  } catch {
+    // ignore parse error
+  }
+  return [];
+}
 
 export default function App() {
   const [selectedId, setSelectedId] = useState<number>(21);
-  // Requested order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 요약본 인쇄 복사
+  // Requested tab order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 요약본 인쇄 복사
   const [activeTab, setActiveTab] = useState<'lecture' | 'summary' | 'quiz' | 'export'>('lecture');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRegion, setFilterRegion] = useState<'all' | 'west' | 'asia'>('all');
-  const [completedLectures, setCompletedLectures] = useState<number[]>(() => {
-    try {
-      const saved = localStorage.getItem('ppakong_completed');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  
+  // Safe initial state for completed lectures
+  const [completedLectures, setCompletedLectures] = useState<number[]>(getInitialCompletedLectures);
   const [copied, setCopied] = useState(false);
 
-  // Quiz state with random questions
-  const [currentQuizzes, setCurrentQuizzes] = useState<QuizQuestion[]>(() => getRandomQuizzes(12));
+  // Safe quiz state with random questions
+  const [currentQuizzes, setCurrentQuizzes] = useState<QuizQuestion[]>(() => {
+    try {
+      const quizzes = getRandomQuizzes(12);
+      return quizzes && quizzes.length > 0 ? quizzes : fullQuizBank.slice(0, 12);
+    } catch {
+      return fullQuizBank.slice(0, 12);
+    }
+  });
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [showQuizResults, setShowQuizResults] = useState(false);
   const [quizSetCounter, setQuizSetCounter] = useState(1);
 
+  // Save progress changes
   useEffect(() => {
     try {
-      localStorage.setItem('ppakong_completed', JSON.stringify(completedLectures));
+      safeStorageSet('ppakong_completed', JSON.stringify(completedLectures));
     } catch (e) {
-      console.error(e);
+      console.warn('Could not save progress:', e);
     }
   }, [completedLectures]);
 
-  const toggleComplete = (id: number) => {
-    setCompletedLectures(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
+  const toggleComplete = useCallback((id: number) => {
+    setCompletedLectures(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.includes(id) ? list.filter(item => item !== id) : [...list, id];
+    });
+  }, []);
 
-  // Shuffle quiz questions
-  const handleShuffleQuizzes = (count = 12) => {
-    setCurrentQuizzes(getRandomQuizzes(count));
+  // Shuffle quiz questions safely
+  const handleShuffleQuizzes = useCallback((count = 12) => {
+    try {
+      const numToFetch = Math.max(1, Math.min(count, fullQuizBank.length));
+      const newQuizzes = getRandomQuizzes(numToFetch);
+      if (newQuizzes && newQuizzes.length > 0) {
+        setCurrentQuizzes(newQuizzes);
+      } else {
+        setCurrentQuizzes(fullQuizBank.slice(0, numToFetch));
+      }
+    } catch (e) {
+      console.warn('Failed to shuffle quizzes, using fallback:', e);
+      setCurrentQuizzes(fullQuizBank.slice(0, Math.min(count, fullQuizBank.length)));
+    }
     setQuizAnswers({});
     setShowQuizResults(false);
     setQuizSetCounter(prev => prev + 1);
-  };
+  }, []);
 
   const filteredLectures = useMemo(() => {
-    return allLectures.filter(lec => {
-      const matchesSearch = 
-        lec.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lec.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lec.bgSummary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lec.coreConcepts.some(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.desc.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      const isWest = lec.id <= 28;
-      const isAsia = lec.id >= 29;
+    try {
+      const q = (searchQuery || '').trim().toLowerCase();
+      return (allLectures || []).filter(lec => {
+        if (!lec) return false;
+        const isWest = lec.id <= 28;
+        const isAsia = lec.id >= 29;
 
-      if (filterRegion === 'west' && !isWest) return false;
-      if (filterRegion === 'asia' && !isAsia) return false;
+        if (filterRegion === 'west' && !isWest) return false;
+        if (filterRegion === 'asia' && !isAsia) return false;
 
-      return matchesSearch;
-    });
+        if (!q) return true;
+
+        const titleMatch = (lec.title || '').toLowerCase().includes(q);
+        const topicMatch = (lec.topic || '').toLowerCase().includes(q);
+        const bgMatch = (lec.bgSummary || '').toLowerCase().includes(q);
+        const conceptMatch = Array.isArray(lec.coreConcepts) && lec.coreConcepts.some(
+          c => (c.name || '').toLowerCase().includes(q) || (c.desc || '').toLowerCase().includes(q)
+        );
+
+        return titleMatch || topicMatch || bgMatch || conceptMatch;
+      });
+    } catch (e) {
+      console.warn('Filter lectures error:', e);
+      return allLectures || [];
+    }
   }, [searchQuery, filterRegion]);
 
-  const currentLecture = useMemo(() => {
-    return allLectures.find(l => l.id === selectedId) || allLectures[0];
+  const currentLecture: Lecture = useMemo(() => {
+    const found = (allLectures || []).find(l => l && l.id === selectedId);
+    return found || allLectures[0] || {
+      id: 21,
+      videoId: '1MjqXwzClr0',
+      unit: '5-1',
+      title: '신항로 개척과 종교 개혁',
+      topic: '신항로 개척과 종교 개혁',
+      bgSummary: '',
+      coreConcepts: [],
+      timeline: [],
+      ramboTips: [],
+      examQuestions: []
+    };
   }, [selectedId]);
 
-  const progressPercent = Math.round((completedLectures.length / allLectures.length) * 100);
+  const safeCompletedList = Array.isArray(completedLectures) ? completedLectures : [];
+  const progressPercent = (allLectures && allLectures.length > 0)
+    ? Math.round((safeCompletedList.length / allLectures.length) * 100)
+    : 0;
 
-  const handleCopyMarkdown = () => {
-    const md = allLectures.map(lec => {
-      return `## [${lec.id}강] ${lec.title}\n` +
-        `**단원:** ${lec.unit} | **주제:** ${lec.topic}\n\n` +
-        `### 📌 람보쌤 칠판 판서 & 핵심 스토리\n${lec.bgSummary}\n\n` +
-        `### 🖍️ 시험에 꼭 나오는 형광펜 핵심 개념\n` +
-        lec.coreConcepts.map(c => `- **${c.name}**: ${c.desc}`).join('\n') + '\n\n' +
-        `### ⏳ 한눈에 보는 사건 타임라인\n` +
-        lec.timeline.map(t => `- **${t.yearOrPeriod}** ${t.event} : ${t.significance}`).join('\n') + '\n\n' +
-        `### 📢 람보쌤 100점 족집게 암기 공식\n` +
-        lec.ramboTips.map(tip => `⭐ ${tip}`).join('\n') + '\n\n' +
-        `### 💯 학교 시험 100점 서술형 & 단답형 족보\n` +
-        lec.examQuestions.map(q => `Q. ${q.q}\nA. ${q.a}\n(해설: ${q.explain})`).join('\n\n') + '\n\n---\n';
-    }).join('\n');
+  // Generate markdown notes safely
+  const fullMarkdownContent = useMemo(() => {
+    try {
+      return (allLectures || []).map(lec => {
+        const concepts = Array.isArray(lec.coreConcepts) 
+          ? lec.coreConcepts.map(c => `- **${c.name}**: ${c.desc}`).join('\n') 
+          : '';
+        const timeline = Array.isArray(lec.timeline)
+          ? lec.timeline.map(t => `- **${t.yearOrPeriod}** ${t.event} : ${t.significance}`).join('\n')
+          : '';
+        const tips = Array.isArray(lec.ramboTips)
+          ? lec.ramboTips.map(tip => `⭐ ${tip}`).join('\n')
+          : '';
+        const exams = Array.isArray(lec.examQuestions)
+          ? lec.examQuestions.map(q => `Q. ${q.q}\nA. ${q.a}\n(해설: ${q.explain})`).join('\n\n')
+          : '';
 
-    navigator.clipboard.writeText(md);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+        return `## [${lec.id}강] ${lec.title}\n` +
+          `**단원:** ${lec.unit} | **주제:** ${lec.topic}\n\n` +
+          `### 📌 람보쌤 칠판 판서 & 핵심 스토리\n${lec.bgSummary}\n\n` +
+          `### 🖍️ 시험에 꼭 나오는 형광펜 핵심 개념\n${concepts}\n\n` +
+          `### ⏳ 한눈에 보는 사건 타임라인\n${timeline}\n\n` +
+          `### 📢 람보쌤 100점 족집게 암기 공식\n${tips}\n\n` +
+          `### 💯 학교 시험 100점 서술형 & 단답형 족보\n${exams}\n\n---\n`;
+      }).join('\n');
+    } catch {
+      return '';
+    }
+  }, []);
 
-  const handleSelectQuiz = (qId: number, optIdx: number) => {
-    setQuizAnswers(prev => ({ ...prev, [qId]: optIdx }));
-  };
+  // Safe clipboard copy
+  const handleCopyMarkdown = useCallback(async () => {
+    try {
+      let success = false;
+      if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(fullMarkdownContent);
+          success = true;
+        } catch {
+          // fallback to textarea copy
+        }
+      }
+
+      if (!success && typeof document !== 'undefined') {
+        const textarea = document.createElement('textarea');
+        textarea.value = fullMarkdownContent;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          success = true;
+        } catch (e) {
+          console.warn('execCommand failed:', e);
+        }
+        document.body.removeChild(textarea);
+      }
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn('Copy error suppressed:', err);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [fullMarkdownContent]);
+
+  // Safe print handler
+  const handlePrint = useCallback(() => {
+    try {
+      if (typeof window !== 'undefined' && typeof window.print === 'function') {
+        window.print();
+      }
+    } catch (err) {
+      console.warn('Window print is not supported in this frame environment:', err);
+    }
+  }, []);
+
+  const handleSelectQuiz = useCallback((qId: number, optIdx: number) => {
+    setQuizAnswers(prev => ({ ...(prev || {}), [qId]: optIdx }));
+  }, []);
 
   const score = useMemo(() => {
+    if (!Array.isArray(currentQuizzes) || currentQuizzes.length === 0) return 0;
     let count = 0;
     currentQuizzes.forEach(q => {
-      if (quizAnswers[q.id] === q.correctIndex) count++;
+      if (q && quizAnswers[q.id] === q.correctIndex) count++;
     });
     return count;
   }, [quizAnswers, currentQuizzes]);
+
+  const scorePercent = (Array.isArray(currentQuizzes) && currentQuizzes.length > 0)
+    ? Math.round((score / currentQuizzes.length) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-amber-400 selection:text-slate-950">
@@ -161,7 +308,7 @@ export default function App() {
                 <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> 내 공부 달성률
               </span>
               <span className="text-sm font-black text-amber-400">
-                {completedLectures.length} / {allLectures.length} 강 끝냄 ({progressPercent}%)
+                {safeCompletedList.length} / {allLectures.length} 강 끝냄 ({progressPercent}%)
               </span>
             </div>
             <div className="w-24 md:w-32 bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
@@ -238,7 +385,7 @@ export default function App() {
                   📚 람보쌤 강의 리스트 (21~34강)
                 </span>
                 <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30">
-                  총 14강
+                  총 {allLectures.length}강
                 </span>
               </div>
 
@@ -290,51 +437,59 @@ export default function App() {
 
               {/* Lecture List */}
               <div className="space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
-                {filteredLectures.map(lec => {
-                  const isDone = completedLectures.includes(lec.id);
-                  const isCurrent = lec.id === selectedId;
+                {filteredLectures.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-400 space-y-1">
+                    <p className="font-bold text-slate-300">검색된 강의가 없습니다.</p>
+                    <p>다른 검색어를 입력하거나 필터를 '전체'로 바꿔보세요.</p>
+                  </div>
+                ) : (
+                  filteredLectures.map(lec => {
+                    const isDone = safeCompletedList.includes(lec.id);
+                    const isCurrent = lec.id === selectedId;
 
-                  return (
-                    <div
-                      key={lec.id}
-                      onClick={() => setSelectedId(lec.id)}
-                      className={`group flex items-start justify-between gap-2 p-3 rounded-2xl cursor-pointer border transition-all ${
-                        isCurrent
-                          ? 'bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400/40'
-                          : 'bg-slate-900/70 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleComplete(lec.id);
-                          }}
-                          className="mt-0.5 text-slate-500 hover:text-amber-400 transition"
-                          title={isDone ? "공부 완료 취소" : "공부 완료 체크"}
-                        >
-                          {isDone ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 fill-emerald-500/20" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-slate-600" />
-                          )}
-                        </button>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
-                              {lec.id}강
-                            </span>
-                            <span className="text-[11px] text-slate-400 font-mono">{lec.unit}</span>
+                    return (
+                      <div
+                        key={`lecture-nav-${lec.id}`}
+                        onClick={() => setSelectedId(lec.id)}
+                        className={`group flex items-start justify-between gap-2 p-3 rounded-2xl cursor-pointer border transition-all ${
+                          isCurrent
+                            ? 'bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400/40'
+                            : 'bg-slate-900/70 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleComplete(lec.id);
+                            }}
+                            className="mt-0.5 text-slate-500 hover:text-amber-400 transition cursor-pointer"
+                            title={isDone ? "공부 완료 취소" : "공부 완료 체크"}
+                          >
+                            {isDone ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 fill-emerald-500/20" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-slate-600" />
+                            )}
+                          </button>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
+                                {lec.id}강
+                              </span>
+                              <span className="text-[11px] text-slate-400 font-mono">{lec.unit}</span>
+                            </div>
+                            <p className="text-xs font-bold text-slate-200 mt-1 line-clamp-1 group-hover:text-amber-300">
+                              {(lec.title || '').replace(/2026 중2역사①\|\s*/, '')}
+                            </p>
                           </div>
-                          <p className="text-xs font-bold text-slate-200 mt-1 line-clamp-1 group-hover:text-amber-300">
-                            {lec.title.replace(/2026 중2역사①\|\s*/, '')}
-                          </p>
                         </div>
+                        <ChevronRight className={`w-4 h-4 mt-1 transition ${isCurrent ? 'text-amber-400 translate-x-0.5' : 'text-slate-600'}`} />
                       </div>
-                      <ChevronRight className={`w-4 h-4 mt-1 transition ${isCurrent ? 'text-amber-400 translate-x-0.5' : 'text-slate-600'}`} />
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </aside>
 
@@ -354,14 +509,15 @@ export default function App() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => toggleComplete(currentLecture.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                        completedLectures.includes(currentLecture.id)
+                        safeCompletedList.includes(currentLecture.id)
                           ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
                           : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-600'
                       }`}
                     >
-                      {completedLectures.includes(currentLecture.id) ? (
+                      {safeCompletedList.includes(currentLecture.id) ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                           공부 완료함! 👍
@@ -396,15 +552,31 @@ export default function App() {
                 </div>
               </div>
 
-              {/* YouTube Video Player Embed */}
-              <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl">
+              {/* YouTube Video Player Embed without JSAPI to prevent cross-frame security issues */}
+              <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl relative">
                 <iframe
                   className="w-full h-full"
-                  src={`https://www.youtube-nocookie.com/embed/${currentLecture.videoId}`}
+                  src={`https://www.youtube.com/embed/${currentLecture.videoId}`}
                   title={currentLecture.title}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
+              </div>
+
+              {/* Quick direct play button in case iframe is blocked in user browser */}
+              <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 text-xs text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                  영상이 화면에서 바로 재생되지 않을 때는?
+                </span>
+                <a
+                  href={`https://www.youtube.com/watch?v=${currentLecture.videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-400 font-bold hover:underline flex items-center gap-1"
+                >
+                  새 창으로 바로보기 ↗
+                </a>
               </div>
 
               {/* 1. 배경 및 스토리라인 총정리 */}
@@ -425,9 +597,9 @@ export default function App() {
                   2. 시험에 무조건 나오는 형광펜 핵심 개념
                 </h3>
                 <div className="grid grid-cols-1 gap-3">
-                  {currentLecture.coreConcepts.map((concept, idx) => (
+                  {(currentLecture.coreConcepts || []).map((concept, idx) => (
                     <div 
-                      key={idx}
+                      key={`concept-${idx}`}
                       className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 transition shadow-sm"
                     >
                       <div className="font-bold text-sm text-amber-300 flex items-center gap-2">
@@ -451,8 +623,8 @@ export default function App() {
                   3. 한눈에 보는 사건 타임라인 (연도별 순서 외우기)
                 </h3>
                 <div className="relative border-l-2 border-slate-800 ml-4 space-y-4 py-1">
-                  {currentLecture.timeline.map((item, idx) => (
-                    <div key={idx} className="relative pl-6">
+                  {(currentLecture.timeline || []).map((item, idx) => (
+                    <div key={`timeline-${idx}`} className="relative pl-6">
                       <div className="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-purple-500 border-2 border-slate-950" />
                       <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
                         <span className="font-mono text-xs font-black text-purple-300 bg-purple-950/70 border border-purple-800/60 px-2 py-0.5 rounded-md">
@@ -473,12 +645,12 @@ export default function App() {
               {/* 4. 람보쌤 시험 족집게 암기 비법 */}
               <section className="bg-gradient-to-br from-amber-500/15 via-rose-500/10 to-transparent border-2 border-amber-500/40 rounded-2xl p-5 space-y-3 shadow-lg">
                 <h3 className="text-sm font-black text-amber-300 flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-rose-500 animate-bounce" />
+                  <Flame className="w-5 h-5 text-rose-500" />
                   4. 람보쌤 육성 지원! 100점 족집게 암기 공식 &amp; 함정 피하기
                 </h3>
                 <ul className="space-y-2.5">
-                  {currentLecture.ramboTips.map((tip, idx) => (
-                    <li key={idx} className="text-xs sm:text-sm text-slate-200 flex items-start gap-2 bg-slate-950/60 p-3 rounded-xl border border-amber-500/20">
+                  {(currentLecture.ramboTips || []).map((tip, idx) => (
+                    <li key={`tip-${idx}`} className="text-xs sm:text-sm text-slate-200 flex items-start gap-2 bg-slate-950/60 p-3 rounded-xl border border-amber-500/20">
                       <span className="text-amber-400 font-black mt-0.5 text-base">⭐</span>
                       <span className="leading-relaxed font-semibold">{tip}</span>
                     </li>
@@ -493,8 +665,8 @@ export default function App() {
                   5. 학교 시험 100점 서술형 &amp; 단답형 적중 족보
                 </h3>
                 <div className="space-y-3">
-                  {currentLecture.examQuestions.map((eq, idx) => (
-                    <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-4.5 space-y-2">
+                  {(currentLecture.examQuestions || []).map((eq, idx) => (
+                    <div key={`exam-${idx}`} className="bg-slate-900 border border-slate-800 rounded-2xl p-4.5 space-y-2">
                       <div className="text-sm font-bold text-white flex items-start gap-2">
                         <span className="text-emerald-400 font-black">Q{idx + 1}.</span>
                         <span>{eq.q}</span>
@@ -515,21 +687,23 @@ export default function App() {
               {/* Next/Prev Buttons */}
               <div className="border-t border-slate-800 pt-6 flex items-center justify-between">
                 <button
+                  type="button"
                   disabled={currentLecture.id <= 21}
                   onClick={() => setSelectedId(prev => Math.max(21, prev - 1))}
                   className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
                 >
-                  ← 이전 강의 ({currentLecture.id - 1}강)
+                  {currentLecture.id > 21 ? `← 이전 강의 (${currentLecture.id - 1}강)` : '첫 강의 (21강)'}
                 </button>
                 <span className="text-xs text-slate-400 font-mono font-bold">
                   {currentLecture.id} / 34 강
                 </span>
                 <button
+                  type="button"
                   disabled={currentLecture.id >= 34}
                   onClick={() => setSelectedId(prev => Math.min(34, prev + 1))}
                   className="px-4 py-2.5 rounded-xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:opacity-40 disabled:pointer-events-none transition flex items-center gap-1 shadow-md cursor-pointer"
                 >
-                  다음 강의 ({currentLecture.id + 1}강) →
+                  {currentLecture.id < 34 ? `다음 강의 (${currentLecture.id + 1}강) →` : '마지막 강의 (34강)'}
                 </button>
               </div>
             </article>
@@ -563,6 +737,7 @@ export default function App() {
 
                 {/* 🎲 모의 퀴즈 바꾸기 버튼 */}
                 <button
+                  type="button"
                   onClick={() => handleShuffleQuizzes(12)}
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-rose-500 to-amber-500 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/25 hover:brightness-110 active:scale-95 transition shrink-0 cursor-pointer"
                 >
@@ -575,18 +750,21 @@ export default function App() {
               <div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-slate-800 text-xs">
                 <span className="text-slate-400 font-bold">시험 문제 수:</span>
                 <button
+                  type="button"
                   onClick={() => handleShuffleQuizzes(10)}
                   className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold transition cursor-pointer"
                 >
                   10문제 뽑기
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleShuffleQuizzes(15)}
                   className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold transition cursor-pointer"
                 >
                   15문제 뽑기
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleShuffleQuizzes(fullQuizBank.length)}
                   className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold transition cursor-pointer"
                 >
@@ -599,7 +777,7 @@ export default function App() {
                   <div>
                     <span className="text-xs text-slate-400 font-bold">이번 시험 결과표</span>
                     <div className="text-2xl font-black text-amber-400 mt-0.5">
-                      {score} / {currentQuizzes.length} 개 정답 ({Math.round((score / currentQuizzes.length) * 100)}점)
+                      {score} / {currentQuizzes.length} 개 정답 ({scorePercent}점)
                     </div>
                     <p className="text-xs text-slate-300 mt-1">
                       {score === currentQuizzes.length 
@@ -608,6 +786,7 @@ export default function App() {
                     </p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => handleShuffleQuizzes(currentQuizzes.length)}
                     className="px-4 py-2 rounded-xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 transition shrink-0 cursor-pointer"
                   >
@@ -619,14 +798,14 @@ export default function App() {
 
             {/* Questions List */}
             <div className="space-y-4">
-              {currentQuizzes.map((quiz, qIndex) => {
+              {(currentQuizzes || []).map((quiz, qIndex) => {
+                if (!quiz) return null;
                 const selectedOpt = quizAnswers[quiz.id];
-                const isAnswered = selectedOpt !== undefined;
                 const isCorrect = selectedOpt === quiz.correctIndex;
 
                 return (
                   <div 
-                    key={quiz.id}
+                    key={`quiz-${quiz.id}-${quizSetCounter}-${qIndex}`}
                     className="bg-slate-950/80 border border-slate-800 rounded-3xl p-5 md:p-6 space-y-3.5 shadow-lg"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -646,7 +825,7 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 pl-0 sm:pl-10">
-                      {quiz.options.map((opt, oIndex) => {
+                      {(quiz.options || []).map((opt, oIndex) => {
                         const isChosen = selectedOpt === oIndex;
                         let btnStyle = "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/80";
 
@@ -662,7 +841,8 @@ export default function App() {
 
                         return (
                           <button
-                            key={oIndex}
+                            key={`opt-${quiz.id}-${oIndex}`}
+                            type="button"
                             onClick={() => handleSelectQuiz(quiz.id, oIndex)}
                             className={`p-3.5 rounded-2xl border text-left text-xs sm:text-sm transition flex items-center justify-between cursor-pointer ${btnStyle}`}
                           >
@@ -703,12 +883,14 @@ export default function App() {
             {/* Bottom Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
               <button
+                type="button"
                 onClick={() => setShowQuizResults(true)}
                 className="w-full sm:w-auto px-10 py-3.5 rounded-2xl bg-amber-400 text-slate-950 font-black text-base shadow-xl shadow-amber-400/25 hover:bg-amber-300 active:scale-95 transition cursor-pointer"
               >
                 💯 채점하고 내 점수 확인하기!
               </button>
               <button
+                type="button"
                 onClick={() => handleShuffleQuizzes(currentQuizzes.length)}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm hover:bg-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
               >
@@ -735,6 +917,7 @@ export default function App() {
 
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={handleCopyMarkdown}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 transition shadow cursor-pointer"
                 >
@@ -742,7 +925,8 @@ export default function App() {
                   {copied ? '복사 완료!' : '텍스트 전체 복사'}
                 </button>
                 <button
-                  onClick={() => window.print()}
+                  type="button"
+                  onClick={handlePrint}
                   className="px-4 py-2.5 rounded-2xl text-xs font-bold bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 transition cursor-pointer flex items-center gap-1"
                 >
                   <Printer className="w-3.5 h-3.5" />
@@ -752,28 +936,7 @@ export default function App() {
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 font-mono text-xs text-slate-300 max-h-[600px] overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner">
-              {allLectures.map(lec => (
-`# [제 ${lec.id}강] ${lec.title}
-- 교과서 단원: ${lec.unit}
-- 핵심 주제: ${lec.topic}
-- 람보쌤 유튜브: https://www.youtube.com/watch?v=${lec.videoId}
-
-■ 1. 람보쌤 칠판 판서 & 핵심 스토리:
-${lec.bgSummary}
-
-■ 2. 시험에 무조건 나오는 형광펜 핵심 개념:
-${lec.coreConcepts.map(c => `• ${c.name}: ${c.desc}`).join('\n')}
-
-■ 3. 한눈에 보는 사건 타임라인:
-${lec.timeline.map(t => `• ${t.yearOrPeriod} [${t.event}] -> ${t.significance}`).join('\n')}
-
-■ 4. 람보쌤 육성 지원! 족집게 암기 공식:
-${lec.ramboTips.map(tip => `⭐ ${tip}`).join('\n')}
-
-■ 5. 학교 시험 100점 서술형 & 단답형 족보:
-${lec.examQuestions.map(q => `Q. ${q.q}\nA. ${q.a}\n(해설: ${q.explain})`).join('\n\n')}
-==================================================\n\n`
-              ))}
+              {fullMarkdownContent}
             </div>
           </div>
         )}

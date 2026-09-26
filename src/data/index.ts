@@ -442,33 +442,35 @@ export const fullQuizBank: QuizQuestion[] = [
   }
 ];
 
-// Helper to get random sample of questions with shuffled options
+// Helper to get random sample of questions with safe bounds
 export function getRandomQuizzes(count: number = 12): QuizQuestion[] {
-  // Fisher-Yates shuffle a clone of fullQuizBank
-  const shuffled = [...fullQuizBank];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  
-  // Pick requested count
-  const picked = shuffled.slice(0, Math.min(count, shuffled.length));
-
-  // Also randomize options for each question so answers aren't predictable
-  return picked.map((item, newId) => {
-    const correctOptionText = item.options[item.correctIndex];
-    const optionsShuffled = [...item.options];
-    for (let i = optionsShuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [optionsShuffled[i], optionsShuffled[j]] = [optionsShuffled[j], optionsShuffled[i]];
+  try {
+    if (!Array.isArray(fullQuizBank) || fullQuizBank.length === 0) {
+      return [];
     }
-    const newCorrectIndex = optionsShuffled.indexOf(correctOptionText);
+    // Fisher-Yates shuffle a clone of fullQuizBank
+    const shuffled = [...fullQuizBank];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // Pick requested count
+    const picked = shuffled.slice(0, Math.max(1, Math.min(count, shuffled.length)));
 
-    return {
-      ...item,
-      id: newId + 1,
-      options: optionsShuffled,
-      correctIndex: newCorrectIndex
-    };
-  });
+    return picked.map((item, idx) => ({
+      id: item.id || (idx + 1),
+      lectureId: item.lectureId || 21,
+      lectureTitle: item.lectureTitle || '',
+      question: item.question || '',
+      options: Array.isArray(item.options) ? [...item.options] : [],
+      correctIndex: typeof item.correctIndex === 'number' ? item.correctIndex : 0,
+      explanation: item.explanation || '',
+      tip: item.tip || ''
+    }));
+  } catch (err) {
+    console.warn('getRandomQuizzes error, returning slice fallback:', err);
+    return fullQuizBank.slice(0, Math.min(count, fullQuizBank.length));
+  }
 }
+

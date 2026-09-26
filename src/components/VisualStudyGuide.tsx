@@ -39,6 +39,7 @@ export function VisualStudyGuide() {
         {/* Category Pill Filters */}
         <div className="flex flex-wrap gap-2 mt-6 relative z-10">
           <button
+            type="button"
             onClick={() => setActiveCategory('all')}
             className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeCategory === 'all'
@@ -49,6 +50,7 @@ export function VisualStudyGuide() {
             🌟 전체 몰아보기 (21~34강)
           </button>
           <button
+            type="button"
             onClick={() => setActiveCategory('revolution')}
             className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeCategory === 'revolution'
@@ -59,6 +61,7 @@ export function VisualStudyGuide() {
             🗽 시민 혁명 &amp; 자유주의 (21~26강)
           </button>
           <button
+            type="button"
             onClick={() => setActiveCategory('industrial')}
             className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeCategory === 'industrial'
@@ -69,6 +72,7 @@ export function VisualStudyGuide() {
             🚂 산업화 &amp; 제국주의 (27~28강)
           </button>
           <button
+            type="button"
             onClick={() => setActiveCategory('asia')}
             className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeCategory === 'asia'
