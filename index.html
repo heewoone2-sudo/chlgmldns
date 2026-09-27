@@ -9,6 +9,45 @@
     <meta property="og:description" content="2026 빡공시대 중2 역사① 21강부터 34강까지(신항로 개척, 시민 혁명, 산업 혁명, 제국주의, 아시아·아프리카 근대화) 핵심 개념 심층 요약 및 시험 대비 스터디 가이드" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Fix for "Cannot set property fetch of #<Window> which has only a getter"
+      // Ensures window.fetch has both a getter and a setter so runtime monitoring scripts can safely proxy fetch
+      (function() {
+        try {
+          var originalFetch = window.fetch;
+          var currentFetch = typeof originalFetch === 'function' ? originalFetch.bind(window) : originalFetch;
+          
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return currentFetch;
+            },
+            set: function(newFetch) {
+              currentFetch = newFetch;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          try {
+            if (typeof Window !== 'undefined' && Window.prototype) {
+              var protoFetch = Window.prototype.fetch;
+              Object.defineProperty(Window.prototype, 'fetch', {
+                get: function() {
+                  return protoFetch;
+                },
+                set: function(newFetch) {
+                  protoFetch = newFetch;
+                },
+                configurable: true,
+                enumerable: true
+              });
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

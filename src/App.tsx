@@ -7,6 +7,7 @@ import {
   QuizQuestion 
 } from './data';
 import { VisualStudyGuide } from './components/VisualStudyGuide';
+import { WrongAnswerNotes } from './components/WrongAnswerNotes';
 import { 
   BookOpen, 
   CheckCircle2, 
@@ -26,7 +27,8 @@ import {
   Printer,
   Heart,
   Pencil,
-  AlertCircle
+  AlertCircle,
+  Bookmark
 } from 'lucide-react';
 
 // In-memory fallback in case localStorage is blocked by sandboxed iframe
@@ -70,10 +72,25 @@ function getInitialCompletedLectures(): number[] {
   return [];
 }
 
+function getInitialWrongQuestions(): number[] {
+  try {
+    const saved = safeStorageGet('ppakong_wrong_questions');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(item => typeof item === 'number');
+      }
+    }
+  } catch {
+    // ignore parse error
+  }
+  return [];
+}
+
 export default function App() {
   const [selectedId, setSelectedId] = useState<number>(21);
-  // Requested tab order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 요약본 인쇄 복사
-  const [activeTab, setActiveTab] = useState<'lecture' | 'summary' | 'quiz' | 'export'>('lecture');
+  // Requested tab order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 오답 노트 -> 요약본 인쇄 복사
+  const [activeTab, setActiveTab] = useState<'lecture' | 'summary' | 'quiz' | 'wrong' | 'export'>('lecture');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRegion, setFilterRegion] = useState<'all' | 'west' | 'asia'>('all');
   
@@ -94,6 +111,9 @@ export default function App() {
   const [showQuizResults, setShowQuizResults] = useState(false);
   const [quizSetCounter, setQuizSetCounter] = useState(1);
 
+  // Wrong questions persistent state
+  const [wrongQuestionIds, setWrongQuestionIds] = useState<number[]>(getInitialWrongQuestions);
+
   // Save progress changes
   useEffect(() => {
     try {
@@ -102,6 +122,15 @@ export default function App() {
       console.warn('Could not save progress:', e);
     }
   }, [completedLectures]);
+
+  // Save wrong question IDs changes
+  useEffect(() => {
+    try {
+      safeStorageSet('ppakong_wrong_questions', JSON.stringify(wrongQuestionIds));
+    } catch (e) {
+      console.warn('Could not save wrong questions:', e);
+    }
+  }, [wrongQuestionIds]);
 
   const toggleComplete = useCallback((id: number) => {
     setCompletedLectures(prev => {
@@ -127,6 +156,39 @@ export default function App() {
     setQuizAnswers({});
     setShowQuizResults(false);
     setQuizSetCounter(prev => prev + 1);
+  }, []);
+
+  // Grade quiz and automatically record wrong questions
+  const handleGradeQuiz = useCallback(() => {
+    setShowQuizResults(true);
+    // Find all questions that were answered incorrectly or left blank
+    const newlyWrong = currentQuizzes.filter(q => q && quizAnswers[q.id] !== q.correctIndex);
+    if (newlyWrong.length > 0) {
+      setWrongQuestionIds(prev => {
+        const existing = new Set(prev);
+        newlyWrong.forEach(q => existing.add(q.id));
+        return Array.from(existing);
+      });
+    }
+  }, [currentQuizzes, quizAnswers]);
+
+  // Remove a question from wrong answer list
+  const handleRemoveWrongQuestion = useCallback((id: number) => {
+    setWrongQuestionIds(prev => prev.filter(qId => qId !== id));
+  }, []);
+
+  // Clear all wrong questions
+  const handleClearAllWrong = useCallback(() => {
+    setWrongQuestionIds([]);
+  }, []);
+
+  // Jump to specific lecture from wrong answer note
+  const handleGoToLecture = useCallback((lectureId: number) => {
+    setSelectedId(lectureId);
+    setActiveTab('lecture');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
 
   const filteredLectures = useMemo(() => {
@@ -320,9 +382,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* Navigation Tabs - Exact requested names and order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 요약본 인쇄 복사 */}
+        {/* Navigation Tabs - Exact requested names and order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 오답 노트 -> 요약본 인쇄 복사 */}
         <div className="max-w-7xl mx-auto mt-3 flex items-center gap-2 border-t border-slate-800/80 pt-2.5 overflow-x-auto text-xs sm:text-sm">
           <button
+            type="button"
             onClick={() => setActiveTab('lecture')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
               activeTab === 'lecture'
@@ -335,6 +398,7 @@ export default function App() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('summary')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
               activeTab === 'summary'
@@ -347,6 +411,7 @@ export default function App() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('quiz')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
               activeTab === 'quiz'
@@ -358,7 +423,31 @@ export default function App() {
             실전 모의 퀴즈
           </button>
 
+          {/* 오답 노트 Tab with badge counter */}
           <button
+            type="button"
+            onClick={() => setActiveTab('wrong')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
+              activeTab === 'wrong'
+                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/25 scale-[1.02]'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <Bookmark className="w-4 h-4" />
+            오답 노트
+            {wrongQuestionIds.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black leading-none ml-0.5 ${
+                activeTab === 'wrong'
+                  ? 'bg-slate-950 text-amber-300'
+                  : 'bg-rose-500 text-white'
+              }`}>
+                {wrongQuestionIds.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('export')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
               activeTab === 'export'
@@ -404,6 +493,7 @@ export default function App() {
               {/* Region Filter Buttons */}
               <div className="flex gap-1.5 text-xs">
                 <button
+                  type="button"
                   onClick={() => setFilterRegion('all')}
                   className={`flex-1 py-1.5 rounded-xl border font-bold transition cursor-pointer ${
                     filterRegion === 'all'
@@ -414,6 +504,7 @@ export default function App() {
                   전체 (14)
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterRegion('west')}
                   className={`flex-1 py-1.5 rounded-xl border font-bold transition cursor-pointer ${
                     filterRegion === 'west'
@@ -424,6 +515,7 @@ export default function App() {
                   서양사 (21~28)
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterRegion('asia')}
                   className={`flex-1 py-1.5 rounded-xl border font-bold transition cursor-pointer ${
                     filterRegion === 'asia'
@@ -773,25 +865,39 @@ export default function App() {
               </div>
 
               {showQuizResults && (
-                <div className="mt-5 p-4 rounded-2xl bg-slate-900 border-2 border-amber-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
+                <div className="mt-5 p-5 rounded-2xl bg-slate-900 border-2 border-amber-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
                     <span className="text-xs text-slate-400 font-bold">이번 시험 결과표</span>
-                    <div className="text-2xl font-black text-amber-400 mt-0.5">
+                    <div className="text-2xl font-black text-amber-400">
                       {score} / {currentQuizzes.length} 개 정답 ({scorePercent}점)
                     </div>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <p className="text-xs text-slate-300">
                       {score === currentQuizzes.length 
                         ? '🎉 대박! 만점이야! 이번 중간·기말고사 무조건 1등급이다!' 
-                        : '아쉽게 틀린 문제의 해설과 람보쌤 암기 팁을 꼭 다시 읽어봐!'}
+                        : '틀린 문제는 [오답 노트]에 자동으로 저장되었어요!'}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleShuffleQuizzes(currentQuizzes.length)}
-                    className="px-4 py-2 rounded-xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 transition shrink-0 cursor-pointer"
-                  >
-                    새 문제로 다시 도전하기 🔄
-                  </button>
+
+                  <div className="flex flex-wrap sm:flex-nowrap gap-2 self-stretch sm:self-auto">
+                    {score < currentQuizzes.length && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('wrong')}
+                        className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black bg-rose-500 text-white hover:bg-rose-400 transition flex items-center justify-center gap-1.5 shadow cursor-pointer"
+                      >
+                        <Bookmark className="w-3.5 h-3.5 fill-white" />
+                        오답 노트로 복습하기 ({wrongQuestionIds.length}) →
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleShuffleQuizzes(currentQuizzes.length)}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 transition cursor-pointer"
+                    >
+                      새 문제로 재도전 🔄
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -884,7 +990,7 @@ export default function App() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => setShowQuizResults(true)}
+                onClick={handleGradeQuiz}
                 className="w-full sm:w-auto px-10 py-3.5 rounded-2xl bg-amber-400 text-slate-950 font-black text-base shadow-xl shadow-amber-400/25 hover:bg-amber-300 active:scale-95 transition cursor-pointer"
               >
                 💯 채점하고 내 점수 확인하기!
@@ -901,7 +1007,18 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: 요약본 인쇄 복사 (프린트 및 마크다운 복사) */}
+        {/* TAB 4: 오답 노트 (틀린 문제 집중 복습 및 재도전) */}
+        {activeTab === 'wrong' && (
+          <WrongAnswerNotes
+            wrongQuestionIds={wrongQuestionIds}
+            onRemoveWrongQuestion={handleRemoveWrongQuestion}
+            onClearAllWrong={handleClearAllWrong}
+            onGoToQuiz={() => setActiveTab('quiz')}
+            onGoToLecture={handleGoToLecture}
+          />
+        )}
+
+        {/* TAB 5: 요약본 인쇄 복사 (프린트 및 마크다운 복사) */}
         {activeTab === 'export' && (
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="bg-slate-950/90 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
