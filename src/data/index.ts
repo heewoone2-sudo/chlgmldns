@@ -3,6 +3,7 @@ import { lecturesPart2 } from "./lecturesPart2";
 
 export * from "./lecturesPart1";
 export * from "./lecturesPart2";
+export * from "./videoMoments";
 
 export const allLectures: Lecture[] = [...lecturesPart1, ...lecturesPart2];
 

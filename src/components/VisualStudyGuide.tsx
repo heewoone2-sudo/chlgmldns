@@ -21,30 +21,30 @@ export function VisualStudyGuide() {
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Handcrafted Study Notebook Top Banner */}
-      <div className="bg-gradient-to-r from-amber-500/20 via-rose-500/15 to-purple-500/20 border-2 border-amber-400/40 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl">
+      <div className="bg-black border-2 border-zinc-800 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl">
         <div className="max-w-3xl relative z-10 space-y-2.5">
-          <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 font-black text-xs px-3 py-1 rounded-full uppercase tracking-wider shadow">
-            <Pencil className="w-3.5 h-3.5 fill-slate-950" />
+          <div className="inline-flex items-center gap-1.5 bg-red-600 text-white font-black text-xs px-3 py-1 rounded-md uppercase tracking-wider shadow">
+            <Pencil className="w-3.5 h-3.5 fill-white" />
             시험 전날 밤 10분 벼락치기 손필기장 📝
           </div>
           <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-            그림 문자와 형광펜으로 한눈에 쏙 들어오는 요약본 🎨
+            빨강·초록·파랑 형광펜으로 한눈에 쏙 들어오는 요약본 🎨
           </h2>
-          <p className="text-sm md:text-base text-slate-200 leading-relaxed font-medium">
+          <p className="text-sm md:text-base text-zinc-300 leading-relaxed font-medium">
             교과서 긴 줄글 읽다가 지친 친구들 주목! 람보쌤이 시험에 꼭 낸다고 강조한 핵심 사건들의 
-            <strong className="text-amber-300"> [원인 ➔ 전개 ➔ 결과]</strong>를 그림 기호와 컬러 카드로 쏙쏙 정리했어.
+            <strong className="text-white"> [</strong><span className="text-blue-400 font-bold">원인(파랑)</span> ➔ <span className="text-red-400 font-bold">핵심(빨강)</span> ➔ <span className="text-emerald-400 font-bold">결과(초록)</span><strong className="text-white">]</strong>를 컬러 카드로 쏙쏙 정리했어.
           </p>
         </div>
 
-        {/* Category Pill Filters */}
+        {/* Category Filters */}
         <div className="flex flex-wrap gap-2 mt-6 relative z-10">
           <button
             type="button"
             onClick={() => setActiveCategory('all')}
-            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 border ${
               activeCategory === 'all'
-                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/20 scale-[1.02]'
-                : 'bg-slate-900/80 border border-slate-700 text-slate-300 hover:bg-slate-800'
+                ? 'bg-white text-black border-white shadow-lg shadow-white/20 scale-[1.02]'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
             }`}
           >
             🌟 전체 몰아보기 (21~34강)
@@ -52,10 +52,10 @@ export function VisualStudyGuide() {
           <button
             type="button"
             onClick={() => setActiveCategory('revolution')}
-            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 border ${
               activeCategory === 'revolution'
-                ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20 scale-[1.02]'
-                : 'bg-slate-900/80 border border-slate-700 text-slate-300 hover:bg-slate-800'
+                ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-600/30 scale-[1.02]'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
             }`}
           >
             🗽 시민 혁명 &amp; 자유주의 (21~26강)
@@ -63,10 +63,10 @@ export function VisualStudyGuide() {
           <button
             type="button"
             onClick={() => setActiveCategory('industrial')}
-            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 border ${
               activeCategory === 'industrial'
-                ? 'bg-sky-400 text-slate-950 shadow-lg shadow-sky-400/20 scale-[1.02]'
-                : 'bg-slate-900/80 border border-slate-700 text-slate-300 hover:bg-slate-800'
+                ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/30 scale-[1.02]'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
             }`}
           >
             🚂 산업화 &amp; 제국주의 (27~28강)
@@ -74,10 +74,10 @@ export function VisualStudyGuide() {
           <button
             type="button"
             onClick={() => setActiveCategory('asia')}
-            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-black transition cursor-pointer flex items-center gap-1.5 border ${
               activeCategory === 'asia'
-                ? 'bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-400/20 scale-[1.02]'
-                : 'bg-slate-900/80 border border-slate-700 text-slate-300 hover:bg-slate-800'
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/30 scale-[1.02]'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
             }`}
           >
             🐉 아시아 각국의 근대화 (29~34강)

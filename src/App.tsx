@@ -6,6 +6,7 @@ import {
   Lecture, 
   QuizQuestion 
 } from './data';
+import { FunVideoTheater } from './components/FunVideoTheater';
 import { VisualStudyGuide } from './components/VisualStudyGuide';
 import { WrongAnswerNotes } from './components/WrongAnswerNotes';
 import { 
@@ -28,7 +29,9 @@ import {
   Heart,
   Pencil,
   AlertCircle,
-  Bookmark
+  Bookmark,
+  Tv,
+  Award
 } from 'lucide-react';
 
 // In-memory fallback in case localStorage is blocked by sandboxed iframe
@@ -89,8 +92,8 @@ function getInitialWrongQuestions(): number[] {
 
 export default function App() {
   const [selectedId, setSelectedId] = useState<number>(21);
-  // Requested tab order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 오답 노트 -> 요약본 인쇄 복사
-  const [activeTab, setActiveTab] = useState<'lecture' | 'summary' | 'quiz' | 'wrong' | 'export'>('lecture');
+  // Default to 'video' for the most fun and easiest learning experience!
+  const [activeTab, setActiveTab] = useState<'video' | 'lecture' | 'summary' | 'quiz' | 'wrong' | 'export'>('video');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRegion, setFilterRegion] = useState<'all' | 'west' | 'asia'>('all');
   
@@ -185,7 +188,7 @@ export default function App() {
   // Jump to specific lecture from wrong answer note
   const handleGoToLecture = useCallback((lectureId: number) => {
     setSelectedId(lectureId);
-    setActiveTab('lecture');
+    setActiveTab('video');
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -279,7 +282,7 @@ export default function App() {
           await navigator.clipboard.writeText(fullMarkdownContent);
           success = true;
         } catch {
-          // fallback to textarea copy
+          // fallback
         }
       }
 
@@ -339,120 +342,140 @@ export default function App() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-amber-400 selection:text-slate-950">
-      {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-950/95 backdrop-blur sticky top-0 z-40 px-4 lg:px-8 py-3.5 shadow-md">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-red-600 selection:text-white">
+      {/* Top Header - Pure Black & White with Red / Green / Blue Accents */}
+      <header className="border-b-2 border-zinc-800 bg-black sticky top-0 z-40 px-4 lg:px-8 py-3.5 shadow-2xl">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-rose-500 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/25 shrink-0 border border-amber-300/30">
-              <Pencil className="w-5 h-5 text-slate-950" />
+            <div className="w-11 h-11 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/30 shrink-0 border border-red-400">
+              <Flame className="w-6 h-6 text-white fill-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="bg-amber-400 text-slate-950 text-[11px] px-2.5 py-0.5 rounded-full font-black tracking-wide shadow-sm flex items-center gap-1">
-                  <Flame className="w-3 h-3 text-rose-600 fill-rose-600" />
-                  열공 빡공시대
+                <span className="bg-red-600 text-white text-[11px] px-2.5 py-0.5 rounded-md font-black tracking-wide shadow-sm flex items-center gap-1">
+                  빡공시대 2026
                 </span>
-                <span className="text-[11px] font-bold text-amber-300/90 bg-amber-950/70 border border-amber-700/60 px-2 py-0.5 rounded-md">
-                  중2 역사① 21강~34강 손필기장 📖
+                <span className="text-[11px] font-bold text-zinc-300 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md">
+                  중2 역사① 21강~34강 완벽 스터디 📖
                 </span>
               </div>
-              <h1 className="text-lg md:text-xl font-black tracking-tight text-white mt-1 flex items-center gap-2">
-                람보쌤과 함께하는 내신 100점 벼락치기 노트 ✨
+              <h1 className="text-lg md:text-xl font-black tracking-tight text-white mt-0.5 flex items-center gap-2">
+                보람쌤과 함께하는 내신 100점 꿀잼 스터디 🎬
               </h1>
             </div>
           </div>
 
-          {/* Study Progress Box */}
-          <div className="flex items-center gap-4 bg-slate-900/90 border border-amber-500/30 rounded-2xl px-4 py-2 self-start md:self-auto shadow-inner">
+          {/* Study Progress Box (Green Accent) */}
+          <div className="flex items-center gap-4 bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-2 self-start md:self-auto shadow-inner">
             <div className="flex flex-col">
-              <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
-                <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> 내 공부 달성률
+              <span className="text-[11px] text-zinc-400 font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 완강 달성률
               </span>
-              <span className="text-sm font-black text-amber-400">
+              <span className="text-sm font-black text-emerald-400">
                 {safeCompletedList.length} / {allLectures.length} 강 끝냄 ({progressPercent}%)
               </span>
             </div>
-            <div className="w-24 md:w-32 bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
+            <div className="w-24 md:w-32 bg-zinc-900 rounded-full h-2.5 overflow-hidden border border-zinc-800">
               <div 
-                className="bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 h-full transition-all duration-300"
+                className="bg-emerald-500 h-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs - Exact requested names and order: 강의 -> 요약본 -> 실전 모의 퀴즈 -> 오답 노트 -> 요약본 인쇄 복사 */}
-        <div className="max-w-7xl mx-auto mt-3 flex items-center gap-2 border-t border-slate-800/80 pt-2.5 overflow-x-auto text-xs sm:text-sm">
+        {/* Navigation Tabs - Strict Palette: Red, Green, Blue, White, Black */}
+        <div className="max-w-7xl mx-auto mt-3 flex items-center gap-2 border-t border-zinc-800 pt-2.5 overflow-x-auto text-xs sm:text-sm scrollbar-none">
+          {/* TAB 1: 꿀잼 영상 (Red Theme) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('video')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer border ${
+              activeTab === 'video'
+                ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-600/30 scale-[1.02]'
+                : 'text-zinc-300 hover:text-white bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
+            }`}
+          >
+            <Tv className="w-4 h-4 text-white" />
+            꿀잼 영상 스터디
+            <span className="text-[10px] bg-white text-red-600 px-1.5 py-0.2 rounded font-black ml-0.5">
+              추천!
+            </span>
+          </button>
+
+          {/* TAB 2: 개념 강의 (Blue Theme) */}
           <button
             type="button"
             onClick={() => setActiveTab('lecture')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer border ${
               activeTab === 'lecture'
-                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/25 scale-[1.02]'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/30 scale-[1.02]'
+                : 'text-zinc-300 hover:text-white bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            강의
+            개념 강의 &amp; 판서
           </button>
 
+          {/* TAB 3: 요약본 (White Theme) */}
           <button
             type="button"
             onClick={() => setActiveTab('summary')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer border ${
               activeTab === 'summary'
-                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/25 scale-[1.02]'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                ? 'bg-white text-black border-white shadow-lg shadow-white/25 scale-[1.02]'
+                : 'text-zinc-300 hover:text-white bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            요약본
+            비주얼 손필기장
           </button>
 
+          {/* TAB 4: 실전 모의 퀴즈 (Blue Theme) */}
           <button
             type="button"
             onClick={() => setActiveTab('quiz')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer border ${
               activeTab === 'quiz'
-                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/25 scale-[1.02]'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/30 scale-[1.02]'
+                : 'text-zinc-300 hover:text-white bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
             }`}
           >
             <HelpCircle className="w-4 h-4" />
             실전 모의 퀴즈
           </button>
 
-          {/* 오답 노트 Tab with badge counter */}
+          {/* TAB 5: 오답 노트 (Red Theme with Badge) */}
           <button
             type="button"
             onClick={() => setActiveTab('wrong')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer border ${
               activeTab === 'wrong'
-                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/25 scale-[1.02]'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-600/30 scale-[1.02]'
+                : 'text-zinc-300 hover:text-white bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
             }`}
           >
             <Bookmark className="w-4 h-4" />
             오답 노트
             {wrongQuestionIds.length > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black leading-none ml-0.5 ${
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black leading-none ml-0.5 ${
                 activeTab === 'wrong'
-                  ? 'bg-slate-950 text-amber-300'
-                  : 'bg-rose-500 text-white'
+                  ? 'bg-black text-red-400'
+                  : 'bg-red-600 text-white'
               }`}>
                 {wrongQuestionIds.length}
               </span>
             )}
           </button>
 
+          {/* TAB 6: 요약본 인쇄 복사 (Zinc/White Theme) */}
           <button
             type="button"
             onClick={() => setActiveTab('export')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black transition-all shrink-0 cursor-pointer border ${
               activeTab === 'export'
-                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/25 scale-[1.02]'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                ? 'bg-zinc-800 text-white border-zinc-600 shadow scale-[1.02]'
+                : 'text-zinc-300 hover:text-white bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
             }`}
           >
             <FileText className="w-4 h-4" />
@@ -464,29 +487,41 @@ export default function App() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6">
         
-        {/* TAB 1: 강의 (21~34강 상세 강의 영상 및 친근한 손필기 노트) */}
+        {/* TAB 1: 꿀잼 영상 스터디 (Fun Video Theater with Timestamps & Flash Quiz) */}
+        {activeTab === 'video' && (
+          <FunVideoTheater
+            allLectures={allLectures}
+            currentLecture={currentLecture}
+            completedLectures={completedLectures}
+            onSelectLecture={(id) => setSelectedId(id)}
+            onToggleComplete={toggleComplete}
+            onGoToQuiz={() => setActiveTab('quiz')}
+          />
+        )}
+
+        {/* TAB 2: 개념 강의 & 판서 (21~34강 상세 교재 & 칠판 판서) */}
         {activeTab === 'lecture' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Sidebar: Lecture Navigation */}
-            <aside className="lg:col-span-4 bg-slate-950/80 border border-slate-800 rounded-3xl p-4.5 flex flex-col gap-3 shadow-xl">
+            <aside className="lg:col-span-4 bg-zinc-950 border-2 border-zinc-800 rounded-3xl p-4.5 flex flex-col gap-3 shadow-xl">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300 flex items-center gap-1">
+                <span className="text-xs font-bold text-zinc-300 flex items-center gap-1">
                   📚 람보쌤 강의 리스트 (21~34강)
                 </span>
-                <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30">
+                <span className="text-[11px] font-bold text-red-400 bg-red-950/60 px-2 py-0.5 rounded-md border border-red-800/60">
                   총 {allLectures.length}강
                 </span>
               </div>
 
               {/* Search Bar */}
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                 <input
                   type="text"
                   placeholder="궁금한 키워드 검색! (예: 루터, 링컨, 양무)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs md:text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs md:text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-red-500"
                 />
               </div>
 
@@ -497,8 +532,8 @@ export default function App() {
                   onClick={() => setFilterRegion('all')}
                   className={`flex-1 py-1.5 rounded-xl border font-bold transition cursor-pointer ${
                     filterRegion === 'all'
-                      ? 'bg-amber-400 text-slate-950 border-amber-400 shadow'
-                      : 'border-slate-800 text-slate-400 hover:bg-slate-900'
+                      ? 'bg-white text-black border-white shadow'
+                      : 'border-zinc-800 text-zinc-400 hover:bg-zinc-900'
                   }`}
                 >
                   전체 (14)
@@ -508,8 +543,8 @@ export default function App() {
                   onClick={() => setFilterRegion('west')}
                   className={`flex-1 py-1.5 rounded-xl border font-bold transition cursor-pointer ${
                     filterRegion === 'west'
-                      ? 'bg-amber-400 text-slate-950 border-amber-400 shadow'
-                      : 'border-slate-800 text-slate-400 hover:bg-slate-900'
+                      ? 'bg-blue-600 text-white border-blue-500 shadow'
+                      : 'border-zinc-800 text-zinc-400 hover:bg-zinc-900'
                   }`}
                 >
                   서양사 (21~28)
@@ -519,8 +554,8 @@ export default function App() {
                   onClick={() => setFilterRegion('asia')}
                   className={`flex-1 py-1.5 rounded-xl border font-bold transition cursor-pointer ${
                     filterRegion === 'asia'
-                      ? 'bg-amber-400 text-slate-950 border-amber-400 shadow'
-                      : 'border-slate-800 text-slate-400 hover:bg-slate-900'
+                      ? 'bg-emerald-600 text-white border-emerald-500 shadow'
+                      : 'border-zinc-800 text-zinc-400 hover:bg-zinc-900'
                   }`}
                 >
                   아시아 (29~34)
@@ -530,8 +565,8 @@ export default function App() {
               {/* Lecture List */}
               <div className="space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
                 {filteredLectures.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-slate-400 space-y-1">
-                    <p className="font-bold text-slate-300">검색된 강의가 없습니다.</p>
+                  <div className="p-6 text-center text-xs text-zinc-500 space-y-1">
+                    <p className="font-bold text-zinc-400">검색된 강의가 없습니다.</p>
                     <p>다른 검색어를 입력하거나 필터를 '전체'로 바꿔보세요.</p>
                   </div>
                 ) : (
@@ -545,8 +580,8 @@ export default function App() {
                         onClick={() => setSelectedId(lec.id)}
                         className={`group flex items-start justify-between gap-2 p-3 rounded-2xl cursor-pointer border transition-all ${
                           isCurrent
-                            ? 'bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400/40'
-                            : 'bg-slate-900/70 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                            ? 'bg-zinc-900 border-l-4 border-red-600 text-white shadow-md'
+                            : 'bg-black border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/60'
                         }`}
                       >
                         <div className="flex items-start gap-2.5">
@@ -556,28 +591,28 @@ export default function App() {
                               e.stopPropagation();
                               toggleComplete(lec.id);
                             }}
-                            className="mt-0.5 text-slate-500 hover:text-amber-400 transition cursor-pointer"
+                            className="mt-0.5 text-zinc-600 hover:text-emerald-400 transition cursor-pointer"
                             title={isDone ? "공부 완료 취소" : "공부 완료 체크"}
                           >
                             {isDone ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400 fill-emerald-500/20" />
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                             ) : (
-                              <Circle className="w-4 h-4 text-slate-600" />
+                              <Circle className="w-4 h-4 text-zinc-700" />
                             )}
                           </button>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
+                              <span className="text-xs font-black text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-800/60">
                                 {lec.id}강
                               </span>
-                              <span className="text-[11px] text-slate-400 font-mono">{lec.unit}</span>
+                              <span className="text-[11px] text-zinc-500 font-mono">{lec.unit}</span>
                             </div>
-                            <p className="text-xs font-bold text-slate-200 mt-1 line-clamp-1 group-hover:text-amber-300">
+                            <p className="text-xs font-bold text-zinc-200 mt-1 line-clamp-1 group-hover:text-white">
                               {(lec.title || '').replace(/2026 중2역사①\|\s*/, '')}
                             </p>
                           </div>
                         </div>
-                        <ChevronRight className={`w-4 h-4 mt-1 transition ${isCurrent ? 'text-amber-400 translate-x-0.5' : 'text-slate-600'}`} />
+                        <ChevronRight className={`w-4 h-4 mt-1 transition ${isCurrent ? 'text-red-500 translate-x-0.5' : 'text-zinc-700'}`} />
                       </div>
                     );
                   })
@@ -586,27 +621,37 @@ export default function App() {
             </aside>
 
             {/* Right Detailed Note Panel */}
-            <article className="lg:col-span-8 bg-slate-950/80 border border-slate-800 rounded-3xl p-5 md:p-8 space-y-6 shadow-2xl">
+            <article className="lg:col-span-8 bg-black border-2 border-zinc-800 rounded-3xl p-5 md:p-8 space-y-6 shadow-2xl">
               {/* Header inside lecture view */}
-              <div className="border-b border-slate-800 pb-5">
+              <div className="border-b border-zinc-800 pb-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="bg-amber-400 text-slate-950 font-black text-sm px-3 py-1 rounded-xl shadow">
+                    <span className="bg-red-600 text-white font-black text-sm px-3 py-1 rounded-xl shadow">
                       제 {currentLecture.id} 강
                     </span>
-                    <span className="text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                    <span className="text-xs font-bold text-zinc-300 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-lg">
                       교과서 {currentLecture.unit}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Direct jump to Fun Video Center */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('video')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-red-600 text-white hover:bg-red-500 transition shadow cursor-pointer"
+                    >
+                      <Tv className="w-3.5 h-3.5" />
+                      꿀잼 영상관에서 보기 ↗
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => toggleComplete(currentLecture.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
                         safeCompletedList.includes(currentLecture.id)
-                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                          : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-600'
+                          ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300'
+                          : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
                       }`}
                     >
                       {safeCompletedList.includes(currentLecture.id) ? (
@@ -616,91 +661,53 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          <Circle className="w-3.5 h-3.5" />
+                          <Circle className="w-3.5 h-3.5 text-zinc-500" />
                           공부 완료로 체크
                         </>
                       )}
                     </button>
-
-                    <a
-                      href={`https://www.youtube.com/watch?v=${currentLecture.videoId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black bg-red-600 text-white hover:bg-red-500 transition shadow"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      유튜브에서 보기
-                      <ExternalLink className="w-3 h-3 ml-0.5 opacity-80" />
-                    </a>
                   </div>
                 </div>
 
                 <h2 className="text-xl md:text-2xl font-black text-white mt-3 leading-snug">
                   {currentLecture.title}
                 </h2>
-                <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-xl text-xs md:text-sm font-bold text-amber-300">
-                  <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="mt-2 inline-flex items-center gap-1.5 bg-blue-950/50 border border-blue-800/60 px-3 py-1 rounded-xl text-xs md:text-sm font-bold text-blue-300">
+                  <Lightbulb className="w-4 h-4 text-blue-400 shrink-0" />
                   오늘의 공부 핵심: {currentLecture.topic}
                 </div>
               </div>
 
-              {/* YouTube Video Player Embed without JSAPI to prevent cross-frame security issues */}
-              <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl relative">
-                <iframe
-                  className="w-full h-full"
-                  src={`https://www.youtube.com/embed/${currentLecture.videoId}`}
-                  title={currentLecture.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-
-              {/* Quick direct play button in case iframe is blocked in user browser */}
-              <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 text-xs text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                  영상이 화면에서 바로 재생되지 않을 때는?
-                </span>
-                <a
-                  href={`https://www.youtube.com/watch?v=${currentLecture.videoId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber-400 font-bold hover:underline flex items-center gap-1"
-                >
-                  새 창으로 바로보기 ↗
-                </a>
-              </div>
-
               {/* 1. 배경 및 스토리라인 총정리 */}
-              <section className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-2">
-                <h3 className="text-sm font-black text-amber-400 flex items-center gap-2 uppercase tracking-wide">
-                  <span>📌</span>
+              <section className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 space-y-2">
+                <h3 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-wide">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
                   1. 람보쌤 칠판 판서 &amp; 핵심 스토리 (이야기로 술술 풀기)
                 </h3>
-                <p className="text-sm text-slate-300 leading-relaxed pt-1 font-normal">
+                <p className="text-sm text-zinc-300 leading-relaxed pt-1 font-normal">
                   {currentLecture.bgSummary}
                 </p>
               </section>
 
               {/* 2. 핵심 개념 심층 분석 */}
               <section className="space-y-3">
-                <h3 className="text-sm font-black text-sky-400 flex items-center gap-2 uppercase tracking-wide">
-                  <span>🖍️</span>
+                <h3 className="text-sm font-black text-blue-400 flex items-center gap-2 uppercase tracking-wide">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
                   2. 시험에 무조건 나오는 형광펜 핵심 개념
                 </h3>
                 <div className="grid grid-cols-1 gap-3">
                   {(currentLecture.coreConcepts || []).map((concept, idx) => (
                     <div 
                       key={`concept-${idx}`}
-                      className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 transition shadow-sm"
+                      className="bg-zinc-950 border border-zinc-800 hover:border-blue-500 rounded-2xl p-4 transition shadow-sm"
                     >
-                      <div className="font-bold text-sm text-amber-300 flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-lg bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center font-black">
+                      <div className="font-bold text-sm text-white flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-lg bg-blue-600 text-white text-xs flex items-center justify-center font-black">
                           {idx + 1}
                         </span>
                         {concept.name}
                       </div>
-                      <p className="text-xs sm:text-sm text-slate-300 mt-2 pl-7 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-zinc-300 mt-2 pl-7 leading-relaxed">
                         {concept.desc}
                       </p>
                     </div>
@@ -710,65 +717,65 @@ export default function App() {
 
               {/* 3. 사건 연표 및 역사적 의의 */}
               <section className="space-y-3">
-                <h3 className="text-sm font-black text-purple-400 flex items-center gap-2 uppercase tracking-wide">
-                  <span>⏳</span>
+                <h3 className="text-sm font-black text-blue-400 flex items-center gap-2 uppercase tracking-wide">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
                   3. 한눈에 보는 사건 타임라인 (연도별 순서 외우기)
                 </h3>
-                <div className="relative border-l-2 border-slate-800 ml-4 space-y-4 py-1">
+                <div className="relative border-l-2 border-blue-900 ml-4 space-y-4 py-1">
                   {(currentLecture.timeline || []).map((item, idx) => (
                     <div key={`timeline-${idx}`} className="relative pl-6">
-                      <div className="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-purple-500 border-2 border-slate-950" />
+                      <div className="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-black" />
                       <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
-                        <span className="font-mono text-xs font-black text-purple-300 bg-purple-950/70 border border-purple-800/60 px-2 py-0.5 rounded-md">
+                        <span className="font-mono text-xs font-black text-blue-300 bg-blue-950 border border-blue-800 px-2 py-0.5 rounded-md">
                           {item.yearOrPeriod}
                         </span>
                         <span className="text-sm font-extrabold text-white">
                           {item.event}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">
-                        ↳ <strong className="text-slate-300 font-semibold">시험 포인트:</strong> {item.significance}
+                      <p className="text-xs text-zinc-400 mt-1">
+                        ↳ <strong className="text-zinc-200 font-semibold">시험 포인트:</strong> {item.significance}
                       </p>
                     </div>
                   ))}
                 </div>
               </section>
 
-              {/* 4. 람보쌤 시험 족집게 암기 비법 */}
-              <section className="bg-gradient-to-br from-amber-500/15 via-rose-500/10 to-transparent border-2 border-amber-500/40 rounded-2xl p-5 space-y-3 shadow-lg">
-                <h3 className="text-sm font-black text-amber-300 flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-rose-500" />
+              {/* 4. 람보쌤 시험 족집게 암기 비법 (Red Theme) */}
+              <section className="bg-red-950/30 border-2 border-red-600/60 rounded-2xl p-5 space-y-3 shadow-lg">
+                <h3 className="text-sm font-black text-red-400 flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-red-500 fill-red-500" />
                   4. 람보쌤 육성 지원! 100점 족집게 암기 공식 &amp; 함정 피하기
                 </h3>
                 <ul className="space-y-2.5">
                   {(currentLecture.ramboTips || []).map((tip, idx) => (
-                    <li key={`tip-${idx}`} className="text-xs sm:text-sm text-slate-200 flex items-start gap-2 bg-slate-950/60 p-3 rounded-xl border border-amber-500/20">
-                      <span className="text-amber-400 font-black mt-0.5 text-base">⭐</span>
+                    <li key={`tip-${idx}`} className="text-xs sm:text-sm text-zinc-200 flex items-start gap-2 bg-black/80 p-3 rounded-xl border border-red-900/60">
+                      <span className="text-red-400 font-black mt-0.5 text-base">🔴</span>
                       <span className="leading-relaxed font-semibold">{tip}</span>
                     </li>
                   ))}
                 </ul>
               </section>
 
-              {/* 5. 실전 기출 단답형·서술형 문제 */}
+              {/* 5. 실전 기출 단답형·서술형 문제 (Green Theme) */}
               <section className="space-y-3">
                 <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2 uppercase tracking-wide">
-                  <span>💯</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   5. 학교 시험 100점 서술형 &amp; 단답형 적중 족보
                 </h3>
                 <div className="space-y-3">
                   {(currentLecture.examQuestions || []).map((eq, idx) => (
-                    <div key={`exam-${idx}`} className="bg-slate-900 border border-slate-800 rounded-2xl p-4.5 space-y-2">
+                    <div key={`exam-${idx}`} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4.5 space-y-2">
                       <div className="text-sm font-bold text-white flex items-start gap-2">
                         <span className="text-emerald-400 font-black">Q{idx + 1}.</span>
                         <span>{eq.q}</span>
                       </div>
-                      <div className="bg-slate-950 rounded-xl p-3.5 border border-slate-800 text-xs space-y-1.5">
+                      <div className="bg-black rounded-xl p-3.5 border border-zinc-800 text-xs space-y-1.5">
                         <div className="text-emerald-300 font-bold">
                           [모범 정답] {eq.a}
                         </div>
-                        <div className="text-slate-400">
-                          💡 <span className="text-slate-300 font-semibold">감점 안 당하는 채점 팁:</span> {eq.explain}
+                        <div className="text-zinc-400">
+                          💡 <span className="text-zinc-300 font-semibold">감점 안 당하는 채점 팁:</span> {eq.explain}
                         </div>
                       </div>
                     </div>
@@ -777,23 +784,23 @@ export default function App() {
               </section>
 
               {/* Next/Prev Buttons */}
-              <div className="border-t border-slate-800 pt-6 flex items-center justify-between">
+              <div className="border-t border-zinc-800 pt-6 flex items-center justify-between">
                 <button
                   type="button"
                   disabled={currentLecture.id <= 21}
                   onClick={() => setSelectedId(prev => Math.max(21, prev - 1))}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
                 >
                   {currentLecture.id > 21 ? `← 이전 강의 (${currentLecture.id - 1}강)` : '첫 강의 (21강)'}
                 </button>
-                <span className="text-xs text-slate-400 font-mono font-bold">
+                <span className="text-xs text-zinc-400 font-mono font-bold">
                   {currentLecture.id} / 34 강
                 </span>
                 <button
                   type="button"
                   disabled={currentLecture.id >= 34}
                   onClick={() => setSelectedId(prev => Math.min(34, prev + 1))}
-                  className="px-4 py-2.5 rounded-xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:opacity-40 disabled:pointer-events-none transition flex items-center gap-1 shadow-md cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-black bg-red-600 text-white hover:bg-red-500 disabled:opacity-40 disabled:pointer-events-none transition flex items-center gap-1 shadow-md cursor-pointer"
                 >
                   {currentLecture.id < 34 ? `다음 강의 (${currentLecture.id + 1}강) →` : '마지막 강의 (34강)'}
                 </button>
@@ -802,27 +809,27 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: 요약본 (비주얼 컬러 가이드 & 그림 문자 쏙쏙 정리) */}
+        {/* TAB 3: 요약본 (비주얼 손필기장) */}
         {activeTab === 'summary' && (
           <VisualStudyGuide />
         )}
 
-        {/* TAB 3: 실전 모의 퀴즈 (랜덤 셔플 기능 탑재) */}
+        {/* TAB 4: 실전 모의 퀴즈 (랜덤 셔플 기능 탑재) */}
         {activeTab === 'quiz' && (
           <div className="max-w-3xl mx-auto space-y-6">
             {/* Top Control Bar */}
-            <div className="bg-slate-950/90 border-2 border-amber-500/40 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+            <div className="bg-black border-2 border-blue-900/60 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 font-black text-xs px-3 py-1 rounded-full uppercase tracking-wider">
-                    <Sparkles className="w-3 h-3 fill-slate-950" />
+                  <div className="inline-flex items-center gap-1.5 bg-blue-600 text-white font-black text-xs px-3 py-1 rounded-md uppercase tracking-wider">
+                    <Sparkles className="w-3 h-3 fill-white" />
                     랜덤 기출 시험지 (세트 #{quizSetCounter})
                   </div>
                   <h2 className="text-xl md:text-2xl font-black text-white mt-2">
                     21강 ~ 34강 전범위 실전 모의 퀴즈 🎯
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                    총 <strong className="text-amber-300">{fullQuizBank.length}문제</strong>의 실제 기출 문제 은행에서 
+                  <p className="text-xs sm:text-sm text-zinc-300 mt-1">
+                    총 <strong className="text-blue-400 font-bold">{fullQuizBank.length}문제</strong>의 실제 기출 문제 은행에서 
                     매번 다른 문제가 무작위로 섞여서 출제돼요!
                   </p>
                 </div>
@@ -831,47 +838,47 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => handleShuffleQuizzes(12)}
-                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-rose-500 to-amber-500 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/25 hover:brightness-110 active:scale-95 transition shrink-0 cursor-pointer"
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-sm shadow-xl shadow-blue-600/30 transition shrink-0 cursor-pointer"
                 >
-                  <Shuffle className="w-4 h-4 text-slate-950 stroke-[3]" />
+                  <Shuffle className="w-4 h-4 text-white stroke-[3]" />
                   🎲 모의 퀴즈 바꾸기 (랜덤 새 문제)
                 </button>
               </div>
 
               {/* Mode switch (10제, 15제, 전범위) */}
-              <div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-slate-800 text-xs">
-                <span className="text-slate-400 font-bold">시험 문제 수:</span>
+              <div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-zinc-800 text-xs">
+                <span className="text-zinc-400 font-bold">시험 문제 수:</span>
                 <button
                   type="button"
                   onClick={() => handleShuffleQuizzes(10)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold transition cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-blue-500 text-zinc-200 font-bold transition cursor-pointer"
                 >
                   10문제 뽑기
                 </button>
                 <button
                   type="button"
                   onClick={() => handleShuffleQuizzes(15)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold transition cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-blue-500 text-zinc-200 font-bold transition cursor-pointer"
                 >
                   15문제 뽑기
                 </button>
                 <button
                   type="button"
                   onClick={() => handleShuffleQuizzes(fullQuizBank.length)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold transition cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-blue-500 text-zinc-200 font-bold transition cursor-pointer"
                 >
                   전체 풀세트 ({fullQuizBank.length}문제 완벽 정복)
                 </button>
               </div>
 
               {showQuizResults && (
-                <div className="mt-5 p-5 rounded-2xl bg-slate-900 border-2 border-amber-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="mt-5 p-5 rounded-2xl bg-zinc-950 border-2 border-emerald-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <span className="text-xs text-slate-400 font-bold">이번 시험 결과표</span>
-                    <div className="text-2xl font-black text-amber-400">
+                    <span className="text-xs text-zinc-400 font-bold">이번 시험 결과표</span>
+                    <div className="text-2xl font-black text-emerald-400">
                       {score} / {currentQuizzes.length} 개 정답 ({scorePercent}점)
                     </div>
-                    <p className="text-xs text-slate-300">
+                    <p className="text-xs text-zinc-300">
                       {score === currentQuizzes.length 
                         ? '🎉 대박! 만점이야! 이번 중간·기말고사 무조건 1등급이다!' 
                         : '틀린 문제는 [오답 노트]에 자동으로 저장되었어요!'}
@@ -883,7 +890,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setActiveTab('wrong')}
-                        className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black bg-rose-500 text-white hover:bg-rose-400 transition flex items-center justify-center gap-1.5 shadow cursor-pointer"
+                        className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black bg-red-600 text-white hover:bg-red-500 transition flex items-center justify-center gap-1.5 shadow cursor-pointer"
                       >
                         <Bookmark className="w-3.5 h-3.5 fill-white" />
                         오답 노트로 복습하기 ({wrongQuestionIds.length}) →
@@ -893,7 +900,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => handleShuffleQuizzes(currentQuizzes.length)}
-                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 transition cursor-pointer"
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black bg-white text-black hover:bg-zinc-200 transition cursor-pointer"
                     >
                       새 문제로 재도전 🔄
                     </button>
@@ -912,15 +919,15 @@ export default function App() {
                 return (
                   <div 
                     key={`quiz-${quiz.id}-${quizSetCounter}-${qIndex}`}
-                    className="bg-slate-950/80 border border-slate-800 rounded-3xl p-5 md:p-6 space-y-3.5 shadow-lg"
+                    className="bg-black border-2 border-zinc-800 rounded-3xl p-5 md:p-6 space-y-3.5 shadow-lg"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <span className="w-7 h-7 rounded-xl bg-amber-400 text-slate-950 text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow">
+                        <span className="w-7 h-7 rounded-xl bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow">
                           {qIndex + 1}
                         </span>
                         <div>
-                          <span className="text-[11px] font-bold text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                          <span className="text-[11px] font-bold text-blue-400 bg-blue-950 border border-blue-800 px-2 py-0.5 rounded-md">
                             {quiz.lectureTitle}
                           </span>
                           <p className="text-sm sm:text-base font-bold text-white mt-1 leading-relaxed">
@@ -933,16 +940,18 @@ export default function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 pl-0 sm:pl-10">
                       {(quiz.options || []).map((opt, oIndex) => {
                         const isChosen = selectedOpt === oIndex;
-                        let btnStyle = "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/80";
+                        let btnStyle = "bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-blue-500 hover:bg-zinc-900";
 
                         if (showQuizResults) {
                           if (oIndex === quiz.correctIndex) {
-                            btnStyle = "bg-emerald-500/25 border-emerald-500 text-emerald-200 font-extrabold shadow-sm";
+                            btnStyle = "bg-emerald-600 text-white font-black border-emerald-400 shadow-md";
                           } else if (isChosen) {
-                            btnStyle = "bg-rose-500/20 border-rose-500 text-rose-300 line-through";
+                            btnStyle = "bg-red-600 text-white border-red-400 line-through";
+                          } else {
+                            btnStyle = "bg-zinc-950/60 text-zinc-600 border-zinc-800";
                           }
                         } else if (isChosen) {
-                          btnStyle = "bg-amber-400 text-slate-950 font-black border-amber-400 shadow-md";
+                          btnStyle = "bg-blue-600 text-white font-black border-blue-400 shadow-md";
                         }
 
                         return (
@@ -954,7 +963,7 @@ export default function App() {
                           >
                             <span>{oIndex + 1}. {opt}</span>
                             {showQuizResults && oIndex === quiz.correctIndex && (
-                              <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
+                              <Check className="w-4 h-4 text-white shrink-0 stroke-[3]" />
                             )}
                           </button>
                         );
@@ -965,17 +974,17 @@ export default function App() {
                       <div className="mt-3 pl-0 sm:pl-10">
                         <div className={`p-4 rounded-2xl border text-xs leading-relaxed space-y-1.5 ${
                           isCorrect 
-                            ? 'bg-emerald-950/40 border-emerald-700 text-emerald-300'
-                            : 'bg-rose-950/40 border-rose-700 text-rose-300'
+                            ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300'
+                            : 'bg-red-950/60 border-red-700 text-red-300'
                         }`}>
                           <div className="font-black text-sm flex items-center gap-1.5">
                             {isCorrect ? '✅ 딩동댕! 정답이야!' : `❌ 아쉽다! 정답은 ${quiz.correctIndex + 1}번이야.`}
                           </div>
-                          <div className="text-slate-200">
+                          <div className="text-zinc-200">
                             <strong>해설:</strong> {quiz.explanation}
                           </div>
-                          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 text-amber-300 font-bold flex items-center gap-1.5">
-                            <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                          <div className="bg-black p-2.5 rounded-xl border border-zinc-800 text-red-300 font-bold flex items-center gap-1.5">
+                            <Flame className="w-3.5 h-3.5 text-red-400 shrink-0 fill-red-400" />
                             <span>람보쌤 암기 팁: {quiz.tip}</span>
                           </div>
                         </div>
@@ -991,14 +1000,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleGradeQuiz}
-                className="w-full sm:w-auto px-10 py-3.5 rounded-2xl bg-amber-400 text-slate-950 font-black text-base shadow-xl shadow-amber-400/25 hover:bg-amber-300 active:scale-95 transition cursor-pointer"
+                className="w-full sm:w-auto px-10 py-3.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-base shadow-xl shadow-red-600/30 transition cursor-pointer"
               >
                 💯 채점하고 내 점수 확인하기!
               </button>
               <button
                 type="button"
                 onClick={() => handleShuffleQuizzes(currentQuizzes.length)}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm hover:bg-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-200 font-bold text-sm hover:bg-zinc-800 transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Shuffle className="w-4 h-4" />
                 모의 퀴즈 바꾸기 (새 문제 풀기)
@@ -1007,7 +1016,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: 오답 노트 (틀린 문제 집중 복습 및 재도전) */}
+        {/* TAB 5: 오답 노트 (틀린 문제 집중 복습 및 재도전) */}
         {activeTab === 'wrong' && (
           <WrongAnswerNotes
             wrongQuestionIds={wrongQuestionIds}
@@ -1018,16 +1027,16 @@ export default function App() {
           />
         )}
 
-        {/* TAB 5: 요약본 인쇄 복사 (프린트 및 마크다운 복사) */}
+        {/* TAB 6: 요약본 인쇄 복사 (프린트 및 마크다운 복사 - Pure Paper Contrast) */}
         {activeTab === 'export' && (
           <div className="max-w-4xl mx-auto space-y-6">
-            <div className="bg-slate-950/90 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+            <div className="bg-black border-2 border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
               <div>
                 <h2 className="text-xl font-black text-white flex items-center gap-2">
-                  <Printer className="w-5 h-5 text-amber-400" />
+                  <Printer className="w-5 h-5 text-red-500" />
                   요약본 인쇄 복사 (나만의 필기장 소장용)
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                <p className="text-xs sm:text-sm text-zinc-300 mt-1">
                   노션(Notion), 아이패드 굿노트(GoodNotes), 또는 A4 용지로 뽑아서 시험 직전에 가볍게 들고 다니며 외우세요!
                 </p>
               </div>
@@ -1036,15 +1045,15 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleCopyMarkdown}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 transition shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-black bg-blue-600 text-white hover:bg-blue-500 transition shadow cursor-pointer"
                 >
-                  {copied ? <Check className="w-4 h-4 text-emerald-950 stroke-[3]" /> : <Copy className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4 text-white stroke-[3]" /> : <Copy className="w-4 h-4" />}
                   {copied ? '복사 완료!' : '텍스트 전체 복사'}
                 </button>
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="px-4 py-2.5 rounded-2xl text-xs font-bold bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 transition cursor-pointer flex items-center gap-1"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 border border-zinc-700 text-white hover:bg-zinc-800 transition cursor-pointer flex items-center gap-1"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   프린트 인쇄 / PDF 저장
@@ -1052,7 +1061,8 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 font-mono text-xs text-slate-300 max-h-[600px] overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner">
+            {/* High Contrast Paper Print Container */}
+            <div className="bg-white text-black rounded-3xl p-8 font-mono text-xs max-h-[600px] overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-2xl border-4 border-black selection:bg-black selection:text-white">
               {fullMarkdownContent}
             </div>
           </div>
@@ -1060,9 +1070,9 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-950/80 px-4 py-6 text-center text-xs text-slate-500">
-        <p className="font-bold text-slate-400">2026 빡공시대TV 중2 역사① (21~34강) 전범위 시험 대비 스터디 노트</p>
-        <p className="mt-1 text-slate-600">본 스터디 가이드는 대한민국 중학교 역사 교육과정 및 빡공시대 람보쌤 유튜브 강의를 기반으로 제작되었습니다.</p>
+      <footer className="border-t border-zinc-800 bg-black px-4 py-6 text-center text-xs text-zinc-500">
+        <p className="font-bold text-zinc-400">2026 빡공시대 중2 역사① (21~34강) 전범위 시험 대비 꿀잼 스터디 노트</p>
+        <p className="mt-1 text-zinc-600">빨강(필수암기) · 초록(완강성공) · 파랑(사건흐름) · 흰색/검정(고대비 필기)로 가장 쉽게 정복하세요!</p>
       </footer>
     </div>
   );
