@@ -1,22 +1,22 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Lecture, funVideoData, VideoTimestamp } from '../data';
+import { sound } from '../utils/audio';
 import { 
   Play, 
   CheckCircle2, 
   Sparkles, 
   Flame, 
-  HelpCircle, 
   RotateCcw, 
-  Volume2, 
-  ExternalLink, 
+  Tv, 
+  Zap, 
+  Award, 
+  Check, 
   ChevronRight, 
   ChevronLeft,
-  Tv,
-  Zap,
-  Bookmark,
-  Award,
-  Layers,
-  Check
+  Volume2,
+  ExternalLink,
+  BookOpen,
+  MessageCircle
 } from 'lucide-react';
 
 interface FunVideoTheaterProps {
@@ -26,6 +26,7 @@ interface FunVideoTheaterProps {
   onSelectLecture: (id: number) => void;
   onToggleComplete: (id: number) => void;
   onGoToQuiz: () => void;
+  onGoToChat: () => void;
 }
 
 export function FunVideoTheater({
@@ -34,9 +35,9 @@ export function FunVideoTheater({
   completedLectures,
   onSelectLecture,
   onToggleComplete,
-  onGoToQuiz
+  onGoToQuiz,
+  onGoToChat
 }: FunVideoTheaterProps) {
-  // Current seeking start time in seconds
   const [seekSeconds, setSeekSeconds] = useState<number>(0);
   const [activeSpeed, setActiveSpeed] = useState<string>('1.25x');
   const [quizSelectedOption, setQuizSelectedOption] = useState<number | null>(null);
@@ -65,25 +66,33 @@ export function FunVideoTheater({
 
   const isCompleted = completedLectures.includes(currentLecture.id);
 
-  // When changing lecture, reset quiz
   const handleSelectLecture = useCallback((id: number) => {
+    sound.playClick();
     setSeekSeconds(0);
     setQuizSelectedOption(null);
     setQuizSubmitted(false);
     onSelectLecture(id);
   }, [onSelectLecture]);
 
-  // Jump to specific timestamp
   const handleJumpToTimestamp = useCallback((seconds: number) => {
+    sound.playClick();
     setSeekSeconds(seconds);
   }, []);
 
-  // Previous & Next lecture
+  const handleQuizAnswer = useCallback((optIdx: number) => {
+    setQuizSelectedOption(optIdx);
+    setQuizSubmitted(true);
+    if (optIdx === funInfo.quickQuiz.correctIndex) {
+      sound.playCorrect();
+    } else {
+      sound.playWrong();
+    }
+  }, [funInfo.quickQuiz.correctIndex]);
+
   const currentIndex = allLectures.findIndex(l => l.id === currentLecture.id);
   const prevLecture = currentIndex > 0 ? allLectures[currentIndex - 1] : null;
   const nextLecture = currentIndex < allLectures.length - 1 ? allLectures[currentIndex + 1] : null;
 
-  // Embedded video iframe src
   const embedSrc = useMemo(() => {
     const base = `https://www.youtube-nocookie.com/embed/${currentLecture.videoId}`;
     const params = new URLSearchParams({
@@ -101,21 +110,21 @@ export function FunVideoTheater({
 
   return (
     <div className="space-y-6">
-      {/* 21~34강 쾌속 탐색 레일 (Red, Green, Blue, White, Black Navigation Strip) */}
-      <div className="bg-black border-2 border-zinc-800 rounded-2xl p-3 shadow-xl">
-        <div className="flex items-center justify-between mb-2 px-1">
+      {/* 21~34강 쾌속 탐색 레일 (Clean White Card with Crisp Red/Green/Blue Badges) */}
+      <div className="bg-white border-2 border-slate-200 rounded-3xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
-            <span className="text-xs font-black text-white uppercase tracking-wider">
-              21강~34강 꿀잼 영상 숏컷 레일
-            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse" />
+            <h3 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight">
+              21강 ~ 34강 꿀잼 영상 숏컷 레일
+            </h3>
           </div>
-          <span className="text-[11px] text-zinc-400 font-semibold">
-            <span className="text-emerald-400 font-bold">{completedLectures.length}</span> / {allLectures.length}강 완강
+          <span className="text-xs text-slate-500 font-semibold">
+            <strong className="text-emerald-600 font-black">{completedLectures.length}</strong> / {allLectures.length}강 완료
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-zinc-700">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
           {allLectures.map(lec => {
             const isSelected = lec.id === currentLecture.id;
             const isDone = completedLectures.includes(lec.id);
@@ -124,18 +133,18 @@ export function FunVideoTheater({
                 key={lec.id}
                 type="button"
                 onClick={() => handleSelectLecture(lec.id)}
-                className={`shrink-0 px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border ${
+                className={`shrink-0 px-3.5 py-2 rounded-2xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 border ${
                   isSelected
-                    ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-600/30 scale-105'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm scale-105'
                     : isDone
-                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60 hover:border-emerald-500'
-                    : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-600 hover:text-white'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:border-emerald-400'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 {isDone ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                  <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
                 ) : (
-                  <Play className={`w-3 h-3 ${isSelected ? 'fill-white text-white' : 'text-blue-400'}`} />
+                  <Play className={`w-3 h-3 ${isSelected ? 'fill-white text-white' : 'text-blue-500'}`} />
                 )}
                 <span>{lec.id}강</span>
               </button>
@@ -148,24 +157,24 @@ export function FunVideoTheater({
       <div className={`grid gap-6 ${theaterMode === 'cinema' ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-12'}`}>
         
         {/* Left Column: Video Player & Timestamp Highlights */}
-        <div className={theaterMode === 'cinema' ? 'w-full' : 'lg:col-span-7 xl:col-span-8 space-y-4'}>
+        <div className={theaterMode === 'cinema' ? 'w-full space-y-4' : 'lg:col-span-7 xl:col-span-8 space-y-4'}>
           {/* Video Player Card */}
-          <div className="bg-black border-2 border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden shadow-sm">
             {/* Player Top Bar */}
-            <div className="bg-zinc-950 px-4 py-3 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="bg-red-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-md flex items-center gap-1">
+            <div className="bg-slate-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="bg-rose-600 text-white text-xs font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1">
                   <Tv className="w-3.5 h-3.5" />
                   {currentLecture.id}강 영상관
                 </span>
-                <span className="text-white text-xs font-bold truncate max-w-[200px] sm:max-w-xs">
+                <span className="text-white text-xs sm:text-sm font-bold truncate max-w-[220px] sm:max-w-md">
                   {funInfo.funTitle}
                 </span>
               </div>
 
               {/* View & Speed Toggle */}
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-[11px]">
+                <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl text-[11px]">
                   {['1.0x', '1.25x', '1.5x'].map(speed => (
                     <button
                       key={speed}
@@ -174,7 +183,7 @@ export function FunVideoTheater({
                       className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
                         activeSpeed === speed
                           ? 'bg-blue-600 text-white'
-                          : 'text-zinc-400 hover:text-white'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       {speed}
@@ -185,9 +194,9 @@ export function FunVideoTheater({
                 <button
                   type="button"
                   onClick={() => setTheaterMode(prev => prev === 'split' ? 'cinema' : 'split')}
-                  className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white text-[11px] font-bold border border-zinc-800 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition cursor-pointer"
                 >
-                  {theaterMode === 'split' ? '📺 시네마 확대' : '📑 분할 모드'}
+                  {theaterMode === 'split' ? '📺 시네마 모드' : '📑 분할 모드'}
                 </button>
               </div>
             </div>
@@ -205,13 +214,13 @@ export function FunVideoTheater({
             </div>
 
             {/* Video Controls & Navigation Footer */}
-            <div className="p-4 bg-zinc-950 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 {prevLecture && (
                   <button
                     type="button"
                     onClick={() => handleSelectLecture(prevLecture.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold border border-zinc-800 transition cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition cursor-pointer"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     이전 {prevLecture.id}강
@@ -221,7 +230,7 @@ export function FunVideoTheater({
                   <button
                     type="button"
                     onClick={() => handleSelectLecture(nextLecture.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold border border-zinc-800 transition cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition cursor-pointer"
                   >
                     다음 {nextLecture.id}강
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -232,36 +241,39 @@ export function FunVideoTheater({
               {/* Complete Toggle Button */}
               <button
                 type="button"
-                onClick={() => onToggleComplete(currentLecture.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                onClick={() => {
+                  sound.playClick();
+                  onToggleComplete(currentLecture.id);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer border ${
                   isCompleted
-                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-600/30'
-                    : 'bg-zinc-900 text-white border-zinc-700 hover:border-emerald-500 hover:bg-emerald-950/40'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50'
                 }`}
               >
-                <CheckCircle2 className={`w-4 h-4 ${isCompleted ? 'text-white' : 'text-emerald-400'}`} />
+                <CheckCircle2 className={`w-4 h-4 ${isCompleted ? 'text-white' : 'text-emerald-500'}`} />
                 {isCompleted ? '완강 완료! (체크 해제)' : '이 영상 완강했어요!'}
               </button>
             </div>
           </div>
 
-          {/* 🎯 꿀잼 킬링 파트 & 3초 암기송 타임스탬프 (High Energy Moments) */}
-          <div className="bg-black border-2 border-zinc-800 rounded-3xl p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
+          {/* 🎯 꿀잼 킬링 파트 & 타임스탬프 (High Energy Moments) */}
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <span className="p-1 rounded-md bg-red-600 text-white">
-                  <Flame className="w-4 h-4 fill-white" />
+                <span className="p-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-200">
+                  <Flame className="w-4 h-4 fill-rose-600" />
                 </span>
-                <h3 className="text-sm font-black text-white">
+                <h3 className="text-sm font-black text-slate-900">
                   클릭 한 번에 바로 점프! 꿀잼 킬링 타임스탬프
                 </h3>
               </div>
-              <span className="text-[11px] text-zinc-400 font-semibold">
-                원하는 구간을 누르면 즉시 재생됩니다
+              <span className="text-xs text-slate-400 font-medium">
+                원하는 구간을 누르면 해당 시간으로 즉시 이동합니다
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {funInfo.timestamps.map((ts: VideoTimestamp, idx: number) => {
                 const isSong = ts.type === 'song';
                 const isExam = ts.type === 'exam';
@@ -272,29 +284,29 @@ export function FunVideoTheater({
                     key={idx}
                     type="button"
                     onClick={() => handleJumpToTimestamp(ts.seconds)}
-                    className="text-left p-3 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-red-500 hover:bg-zinc-900 transition group cursor-pointer"
+                    className="text-left p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-rose-400 hover:bg-white transition group cursor-pointer"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-black text-red-400 bg-red-950/80 border border-red-800/70 px-2 py-0.5 rounded-md flex items-center gap-1 group-hover:bg-red-600 group-hover:text-white transition">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md flex items-center gap-1 group-hover:bg-rose-600 group-hover:text-white transition">
                         <Play className="w-3 h-3 fill-current" />
                         {ts.time}
                       </span>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
                         isSong 
-                          ? 'bg-blue-950 text-blue-300 border border-blue-800' 
+                          ? 'bg-blue-100 text-blue-800' 
                           : isExam 
-                          ? 'bg-red-950 text-red-300 border border-red-800' 
+                          ? 'bg-rose-100 text-rose-800' 
                           : isHumor
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          : 'bg-zinc-800 text-zinc-300'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-200 text-slate-700'
                       }`}>
                         {isSong ? '🎵 3초 암기송' : isExam ? '🎯 시험 족집게' : isHumor ? '😂 꿀잼 썰' : '⚡ 핵심 요약'}
                       </span>
                     </div>
-                    <p className="text-xs font-black text-white group-hover:text-red-300 transition">
+                    <p className="text-xs font-black text-slate-900 group-hover:text-rose-600 transition">
                       {ts.title}
                     </p>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
+                    <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">
                       {ts.desc}
                     </p>
                   </button>
@@ -303,19 +315,19 @@ export function FunVideoTheater({
             </div>
           </div>
 
-          {/* ⚡ 영상 직후 30초 꿀잼 번개 퀴즈 (Instant Flash Quiz) */}
-          <div className="bg-gradient-to-br from-black via-zinc-950 to-blue-950/40 border-2 border-blue-900/60 rounded-3xl p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-blue-900/40 pb-2.5">
+          {/* ⚡ 영상 직후 10초 번개 퀴즈 (Flash Quiz) */}
+          <div className="bg-white border-2 border-blue-200 rounded-3xl p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-blue-100 pb-3">
               <div className="flex items-center gap-2">
-                <span className="p-1 rounded-md bg-blue-600 text-white">
-                  <Zap className="w-4 h-4 fill-white" />
+                <span className="p-1 rounded-lg bg-blue-100 text-blue-600 border border-blue-200">
+                  <Zap className="w-4 h-4 fill-blue-600" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-black text-white">
-                    영상 보고 10초 번개 퀴즈!
+                  <h3 className="text-sm font-black text-slate-900">
+                    방금 본 영상 10초 번개 퀴즈!
                   </h3>
-                  <span className="text-[11px] text-blue-300">
-                    방금 본 영상 기억력 바로 테스트!
+                  <span className="text-xs text-blue-600 font-medium">
+                    방금 본 영상의 핵심을 바로 체크해보세요!
                   </span>
                 </div>
               </div>
@@ -324,36 +336,37 @@ export function FunVideoTheater({
                 <button
                   type="button"
                   onClick={() => {
+                    sound.playClick();
                     setQuizSelectedOption(null);
                     setQuizSubmitted(false);
                   }}
-                  className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 cursor-pointer"
                 >
-                  <RotateCcw className="w-3 h-3" /> 다시 풀기
+                  <RotateCcw className="w-3.5 h-3.5" /> 다시 풀기
                 </button>
               )}
             </div>
 
-            <p className="text-sm font-bold text-white leading-snug">
+            <p className="text-sm font-bold text-slate-900 leading-snug">
               Q. {funInfo.quickQuiz.question}
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {funInfo.quickQuiz.options.map((opt: string, optIdx: number) => {
                 const isSelected = quizSelectedOption === optIdx;
                 const isCorrect = optIdx === funInfo.quickQuiz.correctIndex;
-                let btnStyle = 'bg-zinc-900 border-zinc-800 text-zinc-200 hover:border-blue-500 hover:bg-zinc-800';
+                let btnStyle = 'bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-400 hover:bg-blue-50/50';
 
                 if (quizSubmitted) {
                   if (isCorrect) {
-                    btnStyle = 'bg-emerald-600 text-white border-emerald-400 font-black';
+                    btnStyle = 'bg-emerald-600 text-white border-emerald-600 font-black shadow-sm';
                   } else if (isSelected && !isCorrect) {
-                    btnStyle = 'bg-red-600 text-white border-red-400 line-through';
+                    btnStyle = 'bg-rose-50 text-rose-700 border-rose-300 line-through';
                   } else {
-                    btnStyle = 'bg-zinc-900/60 text-zinc-500 border-zinc-800';
+                    btnStyle = 'bg-slate-50 text-slate-400 border-slate-200';
                   }
                 } else if (isSelected) {
-                  btnStyle = 'bg-blue-600 text-white border-blue-400 font-black';
+                  btnStyle = 'bg-blue-600 text-white border-blue-600 font-black';
                 }
 
                 return (
@@ -361,10 +374,7 @@ export function FunVideoTheater({
                     key={optIdx}
                     type="button"
                     disabled={quizSubmitted}
-                    onClick={() => {
-                      setQuizSelectedOption(optIdx);
-                      setQuizSubmitted(true);
-                    }}
+                    onClick={() => handleQuizAnswer(optIdx)}
                     className={`p-3 rounded-xl border text-left text-xs font-bold transition flex items-center justify-between cursor-pointer ${btnStyle}`}
                   >
                     <span>{optIdx + 1}. {opt}</span>
@@ -378,10 +388,10 @@ export function FunVideoTheater({
 
             {/* Reaction message */}
             {quizSubmitted && (
-              <div className={`p-3 rounded-xl border text-xs font-bold transition-all ${
+              <div className={`p-3.5 rounded-2xl border text-xs font-bold transition-all ${
                 quizSelectedOption === funInfo.quickQuiz.correctIndex
-                  ? 'bg-emerald-950/80 border-emerald-600 text-emerald-200'
-                  : 'bg-red-950/80 border-red-600 text-red-200'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                  : 'bg-rose-50 border-rose-300 text-rose-900'
               }`}>
                 {quizSelectedOption === funInfo.quickQuiz.correctIndex ? (
                   <span>{funInfo.quickQuiz.funReaction}</span>
@@ -393,52 +403,51 @@ export function FunVideoTheater({
           </div>
         </div>
 
-        {/* Right Column: 듀얼 실시간 판서 스터디 노트 (White/Black with Red, Green, Blue Highlighting) */}
+        {/* Right Column: 듀얼 실시간 판서 스터디 노트 */}
         {theaterMode === 'split' && (
           <div className="lg:col-span-5 xl:col-span-4 space-y-4">
-            {/* 칠판 판서 카드 (Blackboard style with high legibility) */}
-            <div className="bg-black border-2 border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 text-zinc-100">
+            <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm space-y-4 text-slate-800">
               
               {/* Header */}
-              <div className="border-b border-zinc-800 pb-3">
+              <div className="border-b border-slate-100 pb-3">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider flex items-center gap-1">
-                    <Flame className="w-3.5 h-3.5 fill-red-500 text-red-500" />
-                    람보쌤 3분 컷 칠판 판서
+                  <span className="text-xs font-black text-rose-600 uppercase tracking-wider flex items-center gap-1">
+                    <Flame className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                    보람쌤 3분 컷 칠판 판서
                   </span>
-                  <span className="text-[11px] font-mono font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+                  <span className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
                     단원 {currentLecture.unit}
                   </span>
                 </div>
-                <h3 className="text-base font-black text-white leading-tight">
+                <h3 className="text-base font-black text-slate-900 leading-tight">
                   {currentLecture.topic}
                 </h3>
               </div>
 
               {/* 1. 보람쌤의 꿀잼 암기 공식 (Green Theme) */}
-              <div className="bg-emerald-950/40 border-2 border-emerald-600/60 rounded-2xl p-4">
-                <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400 mb-1.5">
-                  <Sparkles className="w-4 h-4 text-emerald-400 fill-emerald-400" />
+              <div className="bg-emerald-50/70 border-2 border-emerald-300 rounded-2xl p-4">
+                <div className="flex items-center gap-1.5 text-xs font-black text-emerald-800 mb-1.5">
+                  <Sparkles className="w-4 h-4 text-emerald-600 fill-emerald-600" />
                   보람쌤 입에 착 붙는 100점 암기 공식
                 </div>
-                <p className="text-xs font-bold text-emerald-100 leading-relaxed bg-black/60 p-2.5 rounded-xl border border-emerald-700/50">
+                <p className="text-xs font-bold text-emerald-950 leading-relaxed bg-white p-3 rounded-xl border border-emerald-200">
                   {funInfo.funMnemonic}
                 </p>
               </div>
 
               {/* 2. 시험 1위 족집게 키워드 (Red Theme) */}
-              <div className="bg-red-950/30 border border-red-800/60 rounded-2xl p-4 space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-black text-red-400">
-                  <Flame className="w-4 h-4 text-red-500 fill-red-500" />
+              <div className="bg-rose-50/60 border border-rose-200 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-black text-rose-700">
+                  <Flame className="w-4 h-4 text-rose-600 fill-rose-600" />
                   시험지 열자마자 보이는 킬러 키워드 3
                 </div>
                 <div className="space-y-1.5 text-xs">
                   {currentLecture.coreConcepts.slice(0, 3).map((c, i) => (
-                    <div key={i} className="bg-black/60 p-2 rounded-xl border border-red-900/40">
-                      <span className="font-black text-red-300 block mb-0.5">
+                    <div key={i} className="bg-white p-2.5 rounded-xl border border-rose-100">
+                      <span className="font-black text-rose-700 block mb-0.5">
                         🔴 {c.name}
                       </span>
-                      <span className="text-zinc-300 text-[11px] leading-relaxed block">
+                      <span className="text-slate-600 text-xs leading-relaxed block">
                         {c.desc}
                       </span>
                     </div>
@@ -447,22 +456,22 @@ export function FunVideoTheater({
               </div>
 
               {/* 3. 사건 전개 타임라인 (Blue Theme) */}
-              <div className="bg-blue-950/30 border border-blue-800/60 rounded-2xl p-4 space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-black text-blue-400">
-                  <Bookmark className="w-4 h-4 text-blue-400" />
+              <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-black text-blue-700">
+                  <BookOpen className="w-4 h-4 text-blue-600" />
                   한눈에 꿰뚫는 사건 흐름 (인과관계)
                 </div>
-                <div className="space-y-2 relative pl-2 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-800">
+                <div className="space-y-2 relative pl-2 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-200">
                   {currentLecture.timeline.slice(0, 4).map((t, idx) => (
                     <div key={idx} className="relative pl-4 text-xs">
-                      <span className="absolute -left-1 top-1 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-blue-950" />
-                      <span className="font-mono font-bold text-blue-300 block text-[11px]">
+                      <span className="absolute -left-1 top-1 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
+                      <span className="font-mono font-bold text-blue-600 block text-[11px]">
                         {t.yearOrPeriod}
                       </span>
-                      <span className="font-bold text-white block">
+                      <span className="font-bold text-slate-900 block">
                         {t.event}
                       </span>
-                      <span className="text-[11px] text-zinc-400 block">
+                      <span className="text-[11px] text-slate-500 block">
                         {t.significance}
                       </span>
                     </div>
@@ -474,8 +483,16 @@ export function FunVideoTheater({
               <div className="pt-2 flex flex-col gap-2">
                 <button
                   type="button"
+                  onClick={onGoToChat}
+                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 text-rose-400" />
+                  이 사건 인물 단톡방 보러 가기 ➔
+                </button>
+                <button
+                  type="button"
                   onClick={onGoToQuiz}
-                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition shadow-md shadow-blue-600/30 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Award className="w-4 h-4" />
                   실전 100점 모의고사 풀러 가기
